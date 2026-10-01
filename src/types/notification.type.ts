@@ -6,9 +6,12 @@ export type NotificationType =
   | 'COMPLAINT_CREATED'
   | 'COMPLAINT_RESOLVED'
   | 'NOTICE_CREATED'
-  | 'POLL_CREATED';
+  | 'POLL_CREATED'
+  | 'INCIDENT_UPDATED';
 
 export interface NotificationDto {
+  sourceType?: NotificationSourceType | null;
+  sourceId?: string | null;
   notificationId: string;
   content: string;
   notificationType: NotificationType;

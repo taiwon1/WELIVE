@@ -1,47 +1,51 @@
+import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma";
 import { CreateNotificationInput } from "../types/notification.type";
 
 export async function createNotifiacationRecord(input: CreateNotificationInput) {
-  return prisma.$transaction(async (tx) => {
-    const notification = await tx.notification.create({
-      data: {
+  return prisma.$transaction((tx) => createNotificationWithOutbox(tx, input));
+}
+
+// Use the caller transaction to commit the business event and its delivery together.
+export async function createNotificationWithOutbox(tx: Prisma.TransactionClient, input: CreateNotificationInput) {
+  const notification = await tx.notification.create({
+    data: {
+      userId: input.userId,
+      content: input.content,
+      notificationType: input.notificationType,
+      dedupeKey: input.dedupeKey ?? null,
+      complaintId: input.complaintId ?? null,
+      noticeId: input.noticeId ?? null,
+      pollId: input.pollId ?? null,
+      isChecked: false,
+      sourceType: input.sourceType ?? null,
+      sourceId: input.sourceId ?? null,
+      title: input.title ?? null,
+    },
+  });
+
+  await tx.notificationOutbox.create({
+    data: {
+      notificationId: notification.notificationId,
+      userId: input.userId,
+      notificationType: input.notificationType,
+      sourceType: input.sourceType ?? null,
+      sourceId: input.sourceId ?? null,
+      dedupeKey: input.dedupeKey ?? null,
+      payload: {
+        notificationId: notification.notificationId,
         userId: input.userId,
         content: input.content,
         notificationType: input.notificationType,
-        dedupeKey: input.dedupeKey ?? null,
         complaintId: input.complaintId ?? null,
         noticeId: input.noticeId ?? null,
         pollId: input.pollId ?? null,
-        isChecked: false,
-        sourceType: input.sourceType ?? null,
-        sourceId: input.sourceId ?? null,
-        title: input.title ?? null,
       },
-    });
-
-    await tx.notificationOutbox.create({
-      data: {
-        notificationId: notification.notificationId,
-        userId: input.userId,
-        notificationType: input.notificationType,
-        sourceType: input.sourceType ?? null,
-        sourceId: input.sourceId ?? null,
-        dedupeKey: input.dedupeKey ?? null,
-        payload: {
-          notificationId: notification.notificationId,
-          userId: input.userId,
-          content: input.content,
-          notificationType: input.notificationType,
-          complaintId: input.complaintId ?? null,
-          noticeId: input.noticeId ?? null,
-          pollId: input.pollId ?? null,
-        },
-        status: "PENDING",
-      },
-    });
-
-    return notification;
+      status: "PENDING",
+    },
   });
+
+  return notification;
 }
 
 export async function findNotificationByDedupeKey(
