@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+:root {
+  --font-pretendard: 'Pretendard', sans-serif;
+}
+
+@theme {
+  --color-black: #2B2B2B;
+  --color-gray-50: #F6F6F6;
+  --color-gray-100: #EEEEEE;
+  --color-gray-200: #DDDDDD;
+  --color-gray-300: #BBBBBB;
+  --color-gray-400: #9A9A9A;
+  --color-gray-500: #5D5D5D;
+  --color-red: #FC5A50;
+  --color-blue: #7CC5FA;
+  --color-blue-15: #ECF7FF;    
+  --color-main: #78CA94;
+  --color-main-50: #BBE4C9;    
+  --color-main-15: #EBF7EF;    
+  --color-white: #FFFFFF;
+}
+
+html {
+  font-family: var(--font-pretendard);
+}
+
+/* 커스텀 스크롤바 */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 20px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #dddddd;
+  border-radius: 9999px;
+  border: 7px solid transparent;
+  background-clip: content-box;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background-color: transparent;
+}
