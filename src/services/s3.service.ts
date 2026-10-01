@@ -60,7 +60,10 @@ export class StorageService {
       }),
     );
 
-    return `https://${this.bucket}.s3.${this.region}.amazonaws.com/${key}`;
+    const assetBaseUrl = process.env.ASSET_BASE_URL?.replace(/\/$/, "");
+    return assetBaseUrl
+      ? `${assetBaseUrl}/${key}`
+      : `https://${this.bucket}.s3.${this.region}.amazonaws.com/${key}`;
   }
 
   async deleteFile(fileUrl: string): Promise<void> {

@@ -15,6 +15,22 @@ COPY src ./src
 RUN DATABASE_URL="postgresql://user:password@localhost:5432/db" npx prisma generate
 RUN npm run build
 
+FROM node:20-alpine AS production-dependencies
+
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
+FROM node:20-alpine AS migrator
+
+WORKDIR /app
+ENV NODE_ENV=production
+COPY package*.json ./
+RUN npm ci && npm cache clean --force
+COPY prisma ./prisma
+COPY prisma.config.ts ./
+CMD ["npx", "prisma", "migrate", "deploy"]
+
 FROM node:20-alpine AS runner
 
 WORKDIR /app
@@ -22,7 +38,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 COPY package*.json ./
-RUN npm ci && npm cache clean --force
+COPY --from=production-dependencies /app/node_modules ./node_modules
 
 COPY prisma ./prisma
 COPY prisma.config.ts ./
