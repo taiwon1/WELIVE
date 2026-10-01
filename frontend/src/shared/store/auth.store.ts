@@ -10,11 +10,11 @@ export interface AuthUser {
   role: UserRole;
   username: string;
   contact: string;
-  avatar: string;
-  residentDong?: string;
+  avatar: string | null;
+  residentDong?: string | null;
   isActive: boolean;
   joinStatus: 'PENDING' | 'APPROVED' | 'REJECTED' | 'NEED_UPDATE';
-  apartmentId: string;
+  apartmentId: string | null;
   boardIds: {
     COMPLAINT: string;
     NOTICE: string;
@@ -41,6 +41,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-storage', // localStorage key
+      partialize: (state) => ({ user: state.user }),
     },
   ),
 );

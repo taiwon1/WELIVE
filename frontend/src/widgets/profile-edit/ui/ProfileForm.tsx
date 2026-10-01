@@ -12,8 +12,10 @@ import { profileSchema } from '@/entities/profile/schema/profile.schema';
 import { patchChangeProfile } from '@/entities/profile/api/profile.api';
 import { z } from 'zod';
 import { isAxiosError, AxiosError } from 'axios';
+import { useRouter } from 'next/router';
 
 export default function ProfileForm() {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -52,7 +54,7 @@ export default function ProfileForm() {
       });
 
       alert('프로필이 성공적으로 수정되었습니다. 다시 로그인해주세요.');
-      window.location.href = '/';
+      router.replace('/');
     } catch (error) {
       console.error(error);
 

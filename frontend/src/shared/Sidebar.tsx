@@ -37,6 +37,11 @@ export default function Sidebar({ role }: SidebarProps) {
         icon: <Complaint />,
       },
       {
+        label: '내 민원 처리 현황',
+        path: '/resident/incidents',
+        icon: <List />,
+      },
+      {
         label: '주민투표',
         path: '/resident/voting',
         icon: <Vote />,
@@ -62,6 +67,11 @@ export default function Sidebar({ role }: SidebarProps) {
         label: '민원 관리',
         path: '/admin/civil',
         icon: <Complaint />,
+      },
+      {
+        label: '공동 문제 관리',
+        path: '/admin/incidents',
+        icon: <List />,
       },
       {
         label: '주민투표 관리',

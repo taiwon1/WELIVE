@@ -7,6 +7,8 @@ export interface Notification {
   complaintId?: string;
   noticeId?: string;
   pollId?: string;
+  sourceType?: string;
+  sourceId?: string;
 }
 
 interface NotificationPanelProps {
@@ -14,6 +16,7 @@ interface NotificationPanelProps {
   setNotifications: React.Dispatch<React.SetStateAction<Notification[]>>;
   onClose: () => void;
   onMarkAsRead: (notificationId: string) => Promise<void>;
+  onNotificationClick?: (notification: Notification) => void;
 }
 
 // 상대 시간 포맷 함수
@@ -35,13 +38,15 @@ export default function NotificationPanel({
   setNotifications,
   onClose,
   onMarkAsRead,
+  onNotificationClick,
 }: NotificationPanelProps) {
   // 알림 클릭 시 읽음 처리
-  const handleClick = async (notificationId: string) => {
+  const handleClick = async (notification: Notification) => {
     try {
-      await onMarkAsRead(notificationId);
+      await onMarkAsRead(notification.notificationId);
 
-      setNotifications((prev) => prev.filter((alarm) => alarm.notificationId !== notificationId));
+      setNotifications((prev) => prev.filter((alarm) => alarm.notificationId !== notification.notificationId));
+      onNotificationClick?.(notification);
     } catch (error) {
       console.error('알림 처리 실패:', error);
     }
@@ -56,7 +61,7 @@ export default function NotificationPanel({
           <div
             key={alarm.notificationId}
             className={`mb-4 flex cursor-pointer flex-col gap-1 border-b border-gray-100 pb-3 last:border-b-0 ${alarm.isChecked ? 'opacity-50' : ''}`}
-            onClick={() => handleClick(alarm.notificationId)}
+            onClick={() => handleClick(alarm)}
           >
             <p className='text-sm text-gray-800'>{alarm.content}</p>
             <span className='text-xs text-gray-400'>{getRelativeTime(alarm.notifiedAt)}</span>

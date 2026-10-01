@@ -26,7 +26,7 @@ export interface Apartment {
 }
 
 export const getApartments = async (): Promise<Apartment[]> => {
-  const response = await axios.get<{ apartments: Apartment[] }>('/apartments');
+  const response = await axios.get<{ apartments: Apartment[] }>('/apartments/public');
   return response.data.apartments;
 };
 
@@ -48,6 +48,6 @@ export interface ApartmentDetail {
 }
 
 export const getApartmentDetail = async (apartmentId: string): Promise<ApartmentDetail> => {
-  const response = await axios.get(`/apartments/${apartmentId}`);
+  const response = await axios.get(`/apartments/public/${apartmentId}`);
   return response.data;
 };

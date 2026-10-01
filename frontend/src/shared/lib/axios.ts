@@ -1,17 +1,14 @@
 import axios from 'axios';
 
-const getBaseUrl = (): string => {
-  if (typeof window !== 'undefined') {
-    const storedUrl = localStorage.getItem('apiBaseUrl');
-    if (storedUrl && storedUrl.startsWith('http')) return storedUrl;
-  }
-  return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:9000/api';
-};
-
 const axiosInstance = axios.create({
-  baseURL: getBaseUrl(),
+  baseURL:
+    typeof window === 'undefined'
+      ? process.env.INTERNAL_API_BASE_URL || 'http://localhost:4000/api'
+      : '/api',
   withCredentials: true,
 });
+
+let refreshPromise: Promise<void> | null = null;
 
 axiosInstance.interceptors.response.use(
   (response) => response,
@@ -29,11 +26,16 @@ axiosInstance.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        await axiosInstance.post('/auth/refresh');
+        refreshPromise ??= axiosInstance.post('/auth/refresh').then(() => undefined);
+        await refreshPromise.finally(() => {
+          refreshPromise = null;
+        });
         return axiosInstance(originalRequest);
       } catch (refreshError) {
         console.error('리프레시 에러', refreshError);
-        window.location.href = '/';
+        if (typeof window !== 'undefined') {
+          window.location.replace(new URL('/', window.location.origin).toString());
+        }
       }
     }
 

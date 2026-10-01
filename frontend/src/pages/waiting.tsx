@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuthStore } from '@/shared/store/auth.store';
 import { postLogout } from '@/entities/auth/api/logout.api';
-import Cookies from 'js-cookie';
 
 export default function ApprovalWaiting() {
   const router = useRouter();
@@ -18,8 +17,6 @@ export default function ApprovalWaiting() {
     } finally {
       resetUser();
 
-      Cookies.remove('access_token', { path: '/', domain: process.env.NEXT_PUBLIC_DOMAIN });
-      Cookies.remove('refresh_token', { path: '/', domain: process.env.NEXT_PUBLIC_DOMAIN });
       router.replace('/');
     }
   };

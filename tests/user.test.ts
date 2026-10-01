@@ -101,6 +101,35 @@ describe("User 도메인 통합 테스트", () => {
     await pool.end();
   });
 
+  describe("GET /api/users/me (session restore)", () => {
+    it("성공: 현재 로그인 사용자의 공개 프로필을 반환해야 한다", async () => {
+      const res = await request(app).get("/api/users/me").set("Cookie", userCookie);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({
+        id: testUserId,
+        username: testUser.username,
+        email: testUser.email,
+        role: "USER",
+        joinStatus: "APPROVED",
+      });
+      expect(res.body).not.toHaveProperty("password");
+    });
+
+    it("실패: 로그인하지 않은 요청은 401을 반환해야 한다", async () => {
+      const res = await request(app).get("/api/users/me");
+      expect(res.status).toBe(401);
+    });
+
+    it("실패: 기존 토큰이 있어도 비활성 계정은 세션을 복구하지 않아야 한다", async () => {
+      await prisma.user.update({ where: { id: testUserId }, data: { isActive: false } });
+      const res = await request(app).get("/api/users/me").set("Cookie", userCookie);
+      await prisma.user.update({ where: { id: testUserId }, data: { isActive: true } });
+
+      expect(res.status).toBe(401);
+    });
+  });
+
   /**
    * PATCH /api/users/me (프로필 수정 테스트)
    */

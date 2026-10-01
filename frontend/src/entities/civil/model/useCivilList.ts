@@ -22,11 +22,6 @@ export function useCivilList({ page, limit, status, isPublic, dong, ho, keyword 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
-  //filter undefined params
-  const filteredParams = Object.fromEntries(
-    Object.entries({ status, isPublic, dong, ho, keyword }).filter(([, v]) => v !== undefined),
-  );
-
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -36,7 +31,11 @@ export function useCivilList({ page, limit, status, isPublic, dong, ho, keyword 
           params: {
             page,
             limit,
-            ...filteredParams,
+            ...Object.fromEntries(
+              Object.entries({ status, isPublic, dong, ho, keyword }).filter(
+                ([, value]) => value !== undefined,
+              ),
+            ),
           },
         });
 

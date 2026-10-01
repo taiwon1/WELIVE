@@ -5,7 +5,7 @@ import { GetServerSideProps } from 'next';
 import Image from 'next/image';
 import Input from '@/shared/Input';
 import Link from 'next/link';
-import cookie from 'cookie';
+import * as cookie from 'cookie';
 import { isAxiosError, AxiosError } from 'axios';
 import jwt from 'jsonwebtoken';
 import { postLogin } from '@/entities/auth/api/login.api';
@@ -17,7 +17,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const cookies = cookie.parse(context.req.headers.cookie || '');
-  const token = cookies['access_token'];
+  const token = cookies['accessToken'];
 
   if (!token) {
     return { props: {} };

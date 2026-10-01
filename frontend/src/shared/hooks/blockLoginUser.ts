@@ -13,7 +13,7 @@ export function blockLoginUser<P>(
   return async function (ctx: GetServerSidePropsContext): Promise<GetServerSidePropsResult<P>> {
     const cookieHeader = ctx.req?.headers?.cookie ?? '';
     const cookies = cookie.parse(cookieHeader);
-    const token = cookies['access_token'];
+    const token = cookies['accessToken'];
 
     if (token) {
       try {

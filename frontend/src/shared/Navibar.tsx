@@ -16,6 +16,8 @@ export interface Notification {
   complaintId?: string;
   noticeId?: string;
   pollId?: string;
+  sourceType?: string;
+  sourceId?: string;
 }
 
 export default function Navibar() {
@@ -64,13 +66,7 @@ export default function Navibar() {
 
   // SSE 연결
   useEffect(() => {
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, '');
-    if (!baseUrl) {
-      console.error('BASE_URL is undefined');
-      return;
-    }
-
-    const eventSource = new EventSource(`${baseUrl}/notifications/sse`, {
+    const eventSource = new EventSource('/api/notifications/sse', {
       withCredentials: true,
     });
 
@@ -89,7 +85,6 @@ export default function Navibar() {
 
     eventSource.onerror = (err) => {
       console.error('SSE 연결 에러:', err);
-      eventSource.close();
     };
 
     return () => {
@@ -139,6 +134,11 @@ export default function Navibar() {
                 setNotifications={setNotifications}
                 onClose={toggleNotification}
                 onMarkAsRead={markAsRead}
+                onNotificationClick={(notification) => {
+                  if (notification.sourceType === 'INCIDENT' && notification.sourceId) {
+                    router.push(`/${role === 'ADMIN' ? 'admin' : 'resident'}/incidents/${notification.sourceId}`);
+                  }
+                }}
               />
             )}
           </div>

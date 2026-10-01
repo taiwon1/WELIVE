@@ -8,7 +8,7 @@ interface DecodedToken {
 }
 
 export function middleware(req: NextRequest) {
-  const token = req.cookies.get('access_token')?.value;
+  const token = req.cookies.get('accessToken')?.value;
 
   if (token && req.nextUrl.pathname === '/') {
     try {

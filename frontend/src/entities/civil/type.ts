@@ -7,7 +7,7 @@ export interface CivilListType {
   isPublic: boolean;
   viewsCount: number;
   commentsCount: number;
-  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
+  status: 'PENDING' | 'IN_PROGRESS' | 'RESOLVED';
   dong: string;
   ho: string;
 }

@@ -3,6 +3,7 @@ import '@/styles/globals.css';
 import { AppProps } from 'next/app';
 import { NextPage } from 'next';
 import { ReactNode } from 'react';
+import AuthSession from '@/shared/AuthSession';
 
 type NextPageWithLayout = NextPage & {
   getLayout: (page: ReactNode) => ReactNode;
@@ -14,5 +15,10 @@ export default function App({
 }: AppProps & { Component: NextPageWithLayout }) {
   const getLayout = Component.getLayout ?? ((page: ReactNode) => page);
 
-  return <>{getLayout(<Component {...pageProps} />)}</>;
+  return (
+    <>
+      <AuthSession />
+      {getLayout(<Component {...pageProps} />)}
+    </>
+  );
 }

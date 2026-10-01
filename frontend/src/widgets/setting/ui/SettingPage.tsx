@@ -1,33 +1,18 @@
 import { useEffect, useState } from 'react';
 import Button from '@/shared/Button';
-import Input from '@/shared/Input';
-import { useApiUrlStore } from '@/shared/store/apiUrl.store';
 import Image from 'next/image';
 import Link from 'next/link';
+import axios from '@/shared/lib/axios';
 
 export default function SettingPage() {
-  const [inputUrl, setInputUrl] = useState('');
-  const { url: currentUrl, setUrl, reset } = useApiUrlStore();
+  const [status, setStatus] = useState<'checking' | 'connected' | 'failed'>('checking');
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedUrl = localStorage.getItem('apiBaseUrl');
-      setInputUrl(savedUrl || currentUrl);
-    }
-  }, [currentUrl]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (inputUrl.trim()) {
-      setUrl(inputUrl.trim());
-    }
-  };
-
-  const handleReset = () => {
-    reset();
-    const defaultUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:9000/api';
-    setInputUrl(defaultUrl);
-  };
+    axios
+      .get('/ping')
+      .then(() => setStatus('connected'))
+      .catch(() => setStatus('failed'));
+  }, []);
 
   return (
     <div className='flex h-screen w-screen flex-col items-center justify-center'>
@@ -35,25 +20,17 @@ export default function SettingPage() {
         <Image src='/img/logo.svg' alt='로고' width={174.55} height={64} />
       </Link>
 
-      <form className='mt-[60px] flex w-[480px] flex-col' onSubmit={handleSubmit}>
-        <label className='text-[20px] font-semibold text-black'>API Base URL 입력</label>
-        <Input
-          type='text'
-          placeholder='서비스에 사용할 API의 base URL을 입력해주세요'
-          className='mt-10'
-          value={inputUrl}
-          onChange={(e) => setInputUrl(e.target.value)}
-        />
-
-        <div className='mt-[60px] flex w-full justify-between'>
-          <Button className='w-[230px]' type='submit' disabled={!inputUrl.trim()}>
-            설정하기
-          </Button>
-          <Button className='w-[230px]' type='button' onClick={handleReset}>
-            기본값으로 되돌리기
-          </Button>
-        </div>
-      </form>
+      <div className='mt-[60px] flex w-[480px] flex-col items-center gap-8'>
+        <p className='text-[20px] font-semibold text-black'>서비스 연결 상태</p>
+        <p className={status === 'connected' ? 'text-green-600' : 'text-gray-500'}>
+          {status === 'checking' && '연결을 확인하고 있습니다.'}
+          {status === 'connected' && '서비스에 정상적으로 연결되었습니다.'}
+          {status === 'failed' && '서비스에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.'}
+        </p>
+        <Link href='/'>
+          <Button className='w-[230px]'>돌아가기</Button>
+        </Link>
+      </div>
     </div>
   );
 }
