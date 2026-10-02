@@ -1,6 +1,6 @@
 # WELIVE 작업 안내와 포트폴리오 확장 계획
 
-최종 확인: 2026-10-01. 다음 작업은 이 파일부터 읽는다. 코드와 설정이 바뀌면 해당 항목을 갱신한다. 이 문서는 재탐색을 줄이기 위한 기준이며, 설치·실행 성공을 보증하지 않는다.
+최종 확인: 2026-10-02. 다음 작업은 이 파일부터 읽는다. 코드와 설정이 바뀌면 해당 항목을 갱신한다. 이 문서는 재탐색을 줄이기 위한 기준이며, 설치·실행 성공을 보증하지 않는다.
 
 ## 프로젝트 목적과 범위
 
@@ -12,11 +12,11 @@
 ## 확인된 환경
 
 - 작업 경로: `/home/taewon/projects/WELIVE`, Linux/WSL 경로 체계, bash.
-- 브랜치 main에 공동 문제, 프런트 도입, 배포 준비 변경이 아직 커밋되지 않은 상태다. 브랜치와 변경 상태는 매 작업 시작 시 간단히 확인한다.
-- 설치 도구: Node v24.13.0, npm 11.6.2. Docker 실행 파일은 Windows Docker 경로에 있으나 2026-10-01 확인 당시 Docker Desktop/WSL Integration이 꺼져 있어 이미지와 Compose 실행은 검증하지 못했다.
+- 공동 문제·프런트·배포 준비 PR #1은 개인 저장소 `main`에 병합됐다. 2026-10-02 현재 후속 수정 브랜치는 `codex/fix-initial-session`이다. 브랜치와 변경 상태는 매 작업 시작 시 간단히 확인한다.
+- 설치 도구: Node v24.13.0, npm 11.6.2. Docker Desktop/Ubuntu WSL 연결은 2026-10-02 동작을 확인했다.
 - 백엔드와 프런트 node_modules가 설치되어 있다. .env는 만들지 않았다. psql과 redis-cli는 PATH에서 발견되지 않음.
 - 기본 셸 샌드박스는 bwrap 미설치로 실행 실패했다. 이 세션의 파일 조회·문서 작성은 승인된 대체 실행을 사용했다. 이는 호스트 상태이므로 다음 세션에서도 같다고 단정하지 않는다.
-- 임시 PostgreSQL 18.4에서 마이그레이션과 관련 통합 테스트를 실행했다. 실제 브라우저·Docker·PostgreSQL 16 CI는 아직 검증하지 않았다.
+- 임시 PostgreSQL 18.4에서 마이그레이션과 관련 통합 테스트를 실행했다. 로컬 Docker의 PostgreSQL 16에 마이그레이션 25개를 적용하고 전체 서비스의 건강 상태와 HTTP 응답을 확인했다. 실제 브라우저 사용 흐름·GitHub CI 결과는 별도 확인이 필요하다.
 
 ## 기술과 탐색 지도
 
@@ -184,3 +184,12 @@ README의 ‘모든 테스트 mock 없음’ 표현과 달리 알림·큐 테스
 - AWS 생성·GitHub 변수·EC2 .env·첫 배포 절차는 `docs/deployment.md`. 다음 사용자 작업은 Docker Desktop을 켜고 Ubuntu WSL Integration을 활성화하는 것, 이후 개인 AWS 계정/도메인/예산을 준비하는 것이다.
 - 검증: 백엔드 typecheck/build 통과. 프런트 build 통과(마지막 변경 후 재검증 필요), lint는 기존 소스의 React effect 규칙을 호환 설정으로 제외하고 경고만 남겼다. 임시 PostgreSQL에서 25개 마이그레이션, 공동 문제 19개, 민원 27개, 사용자 9개, 알림·큐 36개 통과. Docker 엔진 미실행으로 Dockerfile/Compose 실제 기동은 미검증이다.
 - 백엔드 npm audit 잔여 high 4건은 devDependency인 Prisma CLI 하위 deepmerge-ts/mysql2 권고다. 강제 수정은 Prisma 7을 6으로 내리므로 적용하지 않았다. 운영 runner는 `npm ci --omit=dev`로 이 도구를 포함하지 않는다. migrator는 신뢰된 마이그레이션 실행 때만 일회성으로 사용한다.
+
+## 2026-10-02 로컬 실행 확인 및 다음 단계
+
+- 개인 저장소 PR #1은 `main`에 병합됐다. 로컬 후속 수정은 `codex/fix-initial-session` 브랜치에서 진행한다.
+- `docker compose -f compose.local.yaml build` 성공. `--profile tools run --rm migration`으로 새 로컬 PostgreSQL 16에 마이그레이션 25개 적용 성공. `up -d` 후 proxy/frontend/backend/postgres/redis 실행 및 각 healthcheck 통과.
+- `http://localhost:3000/`는 200, 같은 출처 `/api/ping`은 200, 공개 단지 목록은 200과 빈 목록, 미로그인 `/api/users/me`는 예상대로 401, 백엔드 `/health`는 200이었다. 실제 브라우저 로그인·민원·알림 흐름은 아직 수동 검증이 필요하다. 새 DB에는 사용자와 단지 데이터가 없다.
+- 익명 사용자의 `/users/me` 401 이후 refresh 실패 시 `/`로 다시 이동해 로그인 화면이 반복 새로고침될 수 있는 오류를 후속 브랜치에서 수정했다. 프런트 로컬 빌드와 Docker 이미지 재빌드를 통과했고, 새 프런트 컨테이너가 healthy다.
+- Docker 빌드의 백엔드 `npm ci --omit=dev` 단계에서 high 4건이 여전히 출력됐다. 이전 문서의 '런타임에는 포함되지 않는다'는 설명은 패키지 경로를 재확인하기 전까지 확정하지 않는다.
+- 사용자가 다음에 확인할 일은 `http://localhost:3000` 로그인 화면을 열어 초기 화면이 안정적으로 표시되는지 확인하는 것이다. 이후 테스트용 계정·단지 생성과 관리자/주민 연결 흐름을 검증한다. AWS 배포 전 기존 공개 최고관리자 가입 경로 등 권한 문제를 해결해야 한다.
