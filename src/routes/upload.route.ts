@@ -3,6 +3,7 @@ import multer from "multer";
 import { randomUUID } from "crypto";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { s3 } from "../lib/s3";
+import { authMiddleware } from "../middlewares/auth.middleware";
 
 const router = Router();
 
@@ -42,7 +43,7 @@ const upload = multer({
   },
 });
 
-router.post("/upload", upload.single("image"), async (req, res) => {
+router.post("/upload", authMiddleware, upload.single("image"), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -62,7 +63,10 @@ router.post("/upload", upload.single("image"), async (req, res) => {
       }),
     );
 
-    const objectUrl = `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+    const assetBaseUrl = process.env.ASSET_BASE_URL?.replace(/\/$/, "");
+    const objectUrl = assetBaseUrl
+      ? `${assetBaseUrl}/${key}`
+      : `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
 
     return res.status(201).json({
       message: "upload success",

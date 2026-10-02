@@ -155,6 +155,8 @@ nb07-welive-team4/
 
 ## 🚀 로컬 실행 방법
 
+프론트와 백엔드를 함께 실행하고 AWS에 배포하는 최신 절차는 [`docs/deployment.md`](docs/deployment.md)를 참고하세요.
+
 ### 사전 준비
 - Node.js 20+
 - Docker
@@ -169,24 +171,27 @@ git clone https://github.com/nb07-welive-team4/nb07-welive-team4.git
 cd nb07-welive-team4
 
 # 2. 패키지 설치
-npm install
+npm ci
+cd frontend && npm ci && cd ..
 
 # 3. 환경변수 설정
 cp .env.example .env
 # .env 파일에 아래 환경변수 값 입력
 
-# 4. DB 마이그레이션
-npx prisma migrate dev
+# 4. 기존 DB 마이그레이션 적용
+npx prisma migrate deploy
 npx prisma generate
 
 # 5. 개발 서버 실행
 npm run dev
 ```
 
-### Docker로 실행
+### Docker로 전체 서비스 실행
 
 ```bash
-docker compose up -d
+docker compose -f compose.local.yaml build
+docker compose -f compose.local.yaml --profile tools run --rm migration
+docker compose -f compose.local.yaml up -d
 ```
 
 <br/>

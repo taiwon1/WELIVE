@@ -1,49 +1,86 @@
 name: Deploy to EC2
 
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
 
 permissions:
   id-token: write
   contents: read
 
 env:
-  AWS_REGION: ap-northeast-2
-  AWS_ACCOUNT_ID: "022038146145"
-  IMAGE_URI: 022038146145.dkr.ecr.ap-northeast-2.amazonaws.com/nb07-welive-team4:latest
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  BACKEND_REPOSITORY: ${{ vars.ECR_BACKEND_REPOSITORY }}
+  FRONTEND_REPOSITORY: ${{ vars.ECR_FRONTEND_REPOSITORY }}
+  IMAGE_TAG: ${{ github.event.workflow_run.head_sha || github.sha }}
 
 jobs:
   deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    environment: production
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ env.IMAGE_TAG }}
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::022038146145:role/github-actions-ecr-push-role
-          aws-region: ap-northeast-2
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
+        id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and push Docker image
+      - name: Build and push backend image
         uses: docker/build-push-action@v6
         with:
           context: .
+          target: runner
           push: true
-          tags: ${{ env.IMAGE_URI }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.BACKEND_REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.BACKEND_REPOSITORY }}:latest
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: Build and push migration image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: migrator
+          push: true
+          tags: ${{ steps.login-ecr.outputs.registry }}/${{ env.BACKEND_REPOSITORY }}:migration-${{ env.IMAGE_TAG }}
+          cache-from: type=gha,scope=migration
+          cache-to: type=gha,mode=max,scope=migration
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          build-args: |
+            NEXT_PUBLIC_ASSET_HOST=${{ vars.ASSET_HOST }}
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.FRONTEND_REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.FRONTEND_REPOSITORY }}:latest
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
 
       - name: Write SSH private key
         env:
@@ -69,14 +106,20 @@ jobs:
           SSH_HOST: ${{ secrets.SSH_HOST }}
         run: |
           set -euo pipefail
-          ssh -i ~/.ssh/id_rsa "$SSH_USER@$SSH_HOST" 'mkdir -p ~/deploy/nb07-welive-team4'
-          scp -i ~/.ssh/id_rsa compose.yaml deploy.sh "$SSH_USER@$SSH_HOST:~/deploy/nb07-welive-team4/"
-          ssh -i ~/.ssh/id_rsa "$SSH_USER@$SSH_HOST" 'chmod +x ~/deploy/nb07-welive-team4/deploy.sh'
+          ssh -i ~/.ssh/id_rsa "$SSH_USER@$SSH_HOST" 'mkdir -p ~/deploy/welive/nginx'
+          scp -i ~/.ssh/id_rsa compose.yaml deploy.sh "$SSH_USER@$SSH_HOST:~/deploy/welive/"
+          scp -i ~/.ssh/id_rsa nginx/default.conf "$SSH_USER@$SSH_HOST:~/deploy/welive/nginx/"
+          ssh -i ~/.ssh/id_rsa "$SSH_USER@$SSH_HOST" 'chmod +x ~/deploy/welive/deploy.sh'
 
       - name: Deploy on EC2
         env:
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           set -euo pipefail
-          ssh -i ~/.ssh/id_rsa "$SSH_USER@$SSH_HOST" 'bash ~/deploy/nb07-welive-team4/deploy.sh'
+          BACKEND_IMAGE="$ECR_REGISTRY/$BACKEND_REPOSITORY:$IMAGE_TAG"
+          FRONTEND_IMAGE="$ECR_REGISTRY/$FRONTEND_REPOSITORY:$IMAGE_TAG"
+          MIGRATION_IMAGE="$ECR_REGISTRY/$BACKEND_REPOSITORY:migration-$IMAGE_TAG"
+          ssh -i ~/.ssh/id_rsa "$SSH_USER@$SSH_HOST" \
+            "AWS_REGION='$AWS_REGION' ECR_REGISTRY='$ECR_REGISTRY' BACKEND_IMAGE='$BACKEND_IMAGE' FRONTEND_IMAGE='$FRONTEND_IMAGE' MIGRATION_IMAGE='$MIGRATION_IMAGE' bash ~/deploy/welive/deploy.sh"

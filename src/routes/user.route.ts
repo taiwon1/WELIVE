@@ -10,6 +10,8 @@ const userController = new UserController();
 
 userRouter.use(authMiddleware);
 
+userRouter.get("/me", userController.getMe);
+
 userRouter.patch(
   "/me",
   uploadMiddleware.single("file"),

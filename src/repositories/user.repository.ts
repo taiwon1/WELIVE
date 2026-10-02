@@ -2,6 +2,18 @@ import { JoinStatus, Prisma } from "@prisma/client";
 import prisma from "../lib/prisma";
 
 export class UserRepo {
+  findSessionUserById = async (userId: string) => {
+    return prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        managedApartment: { include: { boards: true } },
+        resident: {
+          include: { apartment: { include: { boards: true } } },
+        },
+      },
+    });
+  };
+
   findByUserId = async (userId: string) => {
     const user = await prisma.user.findUnique({
       where: { id: userId },

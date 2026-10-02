@@ -5,11 +5,21 @@ import { BadRequestError, NotFoundError, UnauthorizedError } from "../errors/err
 import { AuthRepo } from "../repositories/auth.repository";
 import { StorageService } from "./s3.service";
 import prisma from "../lib/prisma";
+import { LoginResponseDto } from "../models/auth.model";
 
 export class UserService {
   private userRepo = new UserRepo();
   private authRepo = new AuthRepo();
   private storageService = new StorageService();
+
+  getCurrentUser = async (userId: string) => {
+    const user = await this.userRepo.findSessionUserById(userId);
+    if (!user || !user.isActive) {
+      throw new UnauthorizedError("유효한 사용자 세션이 아닙니다.");
+    }
+
+    return new LoginResponseDto(user);
+  };
 
   /**
    * 유저의 프로필 정보(이미지, 비밀번호)를 통합적으로 수정

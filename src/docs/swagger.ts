@@ -6,6 +6,8 @@ import { authDocs } from "./auth.docs";
 import { userDocs } from "./user.docs";
 import { residentDocs } from "./resident.docs";
 
+import { incidentDocs } from "./incident.docs";
+
 const swaggerDocument = {
   openapi: "3.0.0",
   info: {
@@ -28,6 +30,7 @@ const swaggerDocument = {
     ...authDocs,
     ...userDocs,
     ...residentDocs,
+    ...incidentDocs,
   },
 };
 

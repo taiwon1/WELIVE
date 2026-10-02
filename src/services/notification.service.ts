@@ -5,6 +5,8 @@ import { NotFoundError, ForbiddenError } from '../errors/errors';
 function toNotificationDto(notification: any): NotificationDto {
   return {
     notificationId: notification.notificationId,
+    sourceType: notification.sourceType,
+    sourceId: notification.sourceId,
     content: notification.content,
     notificationType: notification.notificationType,
     notifiedAt: notification.notifiedAt instanceof Date ? notification.notifiedAt.toISOString() : notification.notifiedAt,

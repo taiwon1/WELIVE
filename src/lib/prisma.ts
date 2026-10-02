@@ -17,17 +17,23 @@ const pool = new Pool({
 const adapter = new PrismaPg(pool);
 
 const isTest = process.env.NODE_ENV === "test";
+const isDevelopment = process.env.NODE_ENV === "development";
 
 const prisma = new PrismaClient({
   adapter,
   log: isTest
     ? [{ emit: "stdout", level: "error" }] // 테스트 시에는 에러만 출력
-    : [
+    : isDevelopment
+      ? [
         { emit: "stdout", level: "query" }, // 개발 시에는 전체 로그 출력
         { emit: "stdout", level: "error" },
         { emit: "stdout", level: "info" },
         { emit: "stdout", level: "warn" },
-      ],
+      ]
+      : [
+          { emit: "stdout", level: "error" },
+          { emit: "stdout", level: "warn" },
+        ],
 });
 
 export default prisma;

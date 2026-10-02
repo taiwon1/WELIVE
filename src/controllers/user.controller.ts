@@ -15,6 +15,11 @@ type ErrorWithStatusCode = Error & {
 export class UserController {
   private userService = new UserService();
 
+  getMe = async (req: Request, res: Response) => {
+    const result = await this.userService.getCurrentUser(req.user.id);
+    return res.status(200).json(result);
+  };
+
   /**
    * 유저 프로필 정보 수정 요청 처리 (PATCH /me)
    * 인증 미들웨어를 통해 주입된 유저 ID와 멀터(Multer)를 통해 수신된 파일을 서비스로 전달
