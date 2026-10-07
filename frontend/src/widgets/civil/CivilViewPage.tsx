@@ -8,6 +8,7 @@ import axios from '@/shared/lib/axios';
 import CommentSection from '@/shared/comments/ui/CommentSection';
 import { useAuthStore } from '@/shared/store/auth.store';
 import { BoardType } from '@/shared/comments/api/comment.api';
+import Link from 'next/link';
 
 export default function CivilViewPage() {
   const { pathname } = useRouter();
@@ -25,6 +26,7 @@ export default function CivilViewPage() {
     commentsCount: number;
     status: string;
     content: string;
+    incidentId?: string | null;
     comments: {
       id: string;
       userId: string;
@@ -56,13 +58,13 @@ export default function CivilViewPage() {
     if (!id || typeof id !== 'string' || !complaint) return;
 
     const currentLabel = {
-      PENDING: '접수전',
+      PENDING: '처리 대기',
       IN_PROGRESS: '처리중',
       RESOLVED: '처리완료',
     }[complaint.status];
 
     const newLabel = {
-      PENDING: '접수전',
+      PENDING: '처리 대기',
       IN_PROGRESS: '처리중',
       RESOLVED: '처리완료',
     }[newStatus];
@@ -109,15 +111,26 @@ export default function CivilViewPage() {
 
       <CivilContent content={complaint.content} />
 
-      {isAdmin && (
+      {complaint.incidentId && (
+        <p className='mb-5 rounded-xl bg-blue-50 p-4'>
+          이 민원은 공동 문제와 함께 처리됩니다.{' '}
+          <Link
+            className='inline-block min-h-11 content-center font-semibold underline'
+            href={'/' + (isAdmin ? 'admin' : 'resident') + '/incidents/' + complaint.incidentId}
+          >
+            공동 문제의 처리 상황 보기
+          </Link>
+        </p>
+      )}
+      {isAdmin && !complaint.incidentId && (
         <div className='mb-5'>
           <Select
             options={[
-              { value: 'PENDING', label: '접수전' },
+              { value: 'PENDING', label: '처리 대기' },
               { value: 'IN_PROGRESS', label: '처리중' },
               { value: 'RESOLVED', label: '처리완료' },
             ]}
-            defaultValue={complaint.status}
+            value={complaint.status}
             small={true}
             onChange={handleStatusChange}
           />

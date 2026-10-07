@@ -12,7 +12,7 @@ import { ComplaintListQuery } from '../types/complaint.types';
 // GET /api/complaints
 export const getComplaints = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { page, limit, status, isPublic, dong, ho, keyword } = req.query;
+    const { page, limit, status, isPublic, dong, ho, keyword, attention, unlinked } = req.query;
     const requestUserId = req.user.id;
     const isAdmin = req.user.role === 'ADMIN' || req.user.role === 'SUPER_ADMIN';
 
@@ -32,6 +32,8 @@ export const getComplaints = async (req: Request, res: Response, next: NextFunct
       ...(dong !== undefined && { dong: dong as string }),
       ...(ho !== undefined && { ho: ho as string }),
       ...(keyword !== undefined && { keyword: keyword as string }),
+      ...((attention === 'unread' || attention === 'unfinished') && { attention }),
+      ...(unlinked === 'true' && { unlinked: true }),
     };
 
     const result = await complaintService.getComplaints(
@@ -100,7 +102,7 @@ export const updateComplaintStatus = async (req: Request, res: Response, next: N
 
     const complaintId = req.params['complaintId'] as string;
 
-    const result = await complaintService.updateComplaintStatus(complaintId, req.body);
+    const result = await complaintService.updateComplaintStatus(complaintId, req.body, req.user.id);
 
     res.status(200).json(result);
   } catch (err) {

@@ -1,5 +1,5 @@
 import { Prisma } from '@prisma/client';
-import { ConflictError, NotFoundError } from '../errors/errors';
+import { BadRequestError, ConflictError, NotFoundError } from '../errors/errors';
 
 type Tx = Prisma.TransactionClient;
 
@@ -12,7 +12,7 @@ export async function lockIncident(tx: Tx, id: string, apartmentId: string) {
   return tx.incident.findUniqueOrThrow({ where: { id } });
 }
 
-export async function linkComplaints(tx: Tx, incidentId: string, apartmentId: string, complaintIds: string[]) {
+export async function linkComplaints(tx: Tx, incidentId: string, apartmentId: string, complaintIds: string[], initialize = false) {
   // Sorted row locks prevent two incidents from concurrently acquiring the same complaint.
   const ids = [...complaintIds].sort();
   await tx.$queryRaw`
@@ -26,9 +26,22 @@ export async function linkComplaints(tx: Tx, incidentId: string, apartmentId: st
   if (complaints.some(item => item.incidentLink && item.incidentLink.incidentId !== incidentId)) {
     throw new ConflictError('다른 공동 문제에 연결된 민원입니다. 먼저 연결을 해제해주세요.');
   }
+  if (initialize) {
+    if (complaints.some(item => item.status === 'RESOLVED')) {
+      throw new BadRequestError('완료된 민원은 새 공동 문제에 묶을 수 없습니다.');
+    }
+    if (complaints.some(item => item.status === 'IN_PROGRESS')) {
+      await tx.incident.update({ where: { id: incidentId }, data: { status: 'IN_PROGRESS' } });
+    }
+  }
   await tx.incidentComplaint.createMany({
     data: ids.map(complaintId => ({ complaintId, incidentId })),
     skipDuplicates: true,
+  });
+  const incident = await tx.incident.findUniqueOrThrow({ where: { id: incidentId } });
+  await tx.complaint.updateMany({
+    where: { id: { in: ids }, status: { not: incident.status } },
+    data: { status: incident.status },
   });
 }
 

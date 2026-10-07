@@ -42,8 +42,8 @@ export async function createIncident(userId: string, body: Infer<typeof CreateIn
     const incident = await tx.incident.create({ data: {
       apartmentId: actor.apartmentId, title: body.title, description: body.description, createdById: actor.id,
     }, select: publicIncidentSelect });
-    await linkComplaints(tx, incident.id, actor.apartmentId, body.complaintIds);
-    return incident;
+    await linkComplaints(tx, incident.id, actor.apartmentId, body.complaintIds, true);
+    return tx.incident.findUniqueOrThrow({ where: { id: incident.id }, select: publicIncidentSelect });
   });
 }
 
@@ -62,13 +62,14 @@ export async function getIncident(userId: string, id: string) {
     const actor = await actorFor(tx, userId);
     const incident = await assertVisible(tx, actor, id);
     // Residents receive no other complaint IDs, titles, authors, counts or private content.
-    const ownLinks = await tx.incidentComplaint.findMany({
+  const ownLinks = await tx.incidentComplaint.findMany({
       where: { incidentId: id, ...(!actor.isAdmin && { complaint: { authorId: actor.id } }) },
-      select: { complaintId: true }, orderBy: { complaintId: 'asc' },
+      select: { complaintId: true, complaint: { select: { title: true } } }, orderBy: { complaintId: 'asc' },
     });
     const updates = await tx.incidentUpdate.findMany({ where: { incidentId: id }, select: publicUpdateSelect,
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 20 });
-    return { ...incident, complaintIds: ownLinks.map(link => link.complaintId), updates };
+    return { ...incident, complaintIds: ownLinks.map(link => link.complaintId),
+      complaints: ownLinks.map(link => ({ id: link.complaintId, title: link.complaint.title })), updates };
   });
 }
 
@@ -126,6 +127,12 @@ export async function postUpdate(userId: string, id: string, body: Infer<typeof 
     await tx.incident.update({ where: { id }, data: {
       status: body.status, expectedResolutionAt, version: { increment: 1 },
     } });
+    // The shared workflow is authoritative while a complaint remains linked.
+    // No separate complaint notification is generated: one incident update per resident.
+    await tx.complaint.updateMany({
+      where: { incidentLink: { incidentId: id } },
+      data: { status: body.status, adminReadAt: new Date() },
+    });
     const recipients = await tx.user.findMany({ where: {
       role: 'USER', isActive: true, joinStatus: 'APPROVED',
       resident: { apartmentId: actor.apartmentId, residenceStatus: 'RESIDENCE' },

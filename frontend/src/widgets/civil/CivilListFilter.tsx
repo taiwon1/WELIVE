@@ -26,10 +26,9 @@ type AdminProps = Props & {
 };
 
 export const statusOptions = [
-  { value: 'PENDING', label: '접수전' },
+  { value: 'PENDING', label: '처리 대기' },
   { value: 'IN_PROGRESS', label: '처리중' },
   { value: 'RESOLVED', label: '처리완료' },
-  { value: 'REJECTED', label: '처리불가' },
 ];
 
 const filterStatusOptions = [{ value: '전체', label: '전체' }, ...statusOptions];
@@ -52,7 +51,7 @@ export function AdminCivilListFilter({
   return (
     <ul className='flex flex-col gap-[25px]'>
       <li>
-        <ul className='flex gap-4'>
+        <ul className='flex flex-wrap gap-4'>
           <li>
             <Select label='동' value={dong} onChange={onDongChange} options={[...dongOptions]} />
           </li>
@@ -82,20 +81,25 @@ export function AdminCivilListFilter({
         </ul>
       </li>
       <li>
-        <div className='w-[375px]'>
-          <Input
-            label='검색'
-            childrenPosition='left'
-            color='search'
-            placeholder='검색어를 입력해 주세요'
-            value={keyword}
-            onChange={(e) => onKeywordChange(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') onSearch();
-            }}
-          >
-            <Image src='/icon_search.svg' alt='검색버튼' width={24} height={24} />
-          </Input>
+        <div className='flex flex-wrap items-end gap-3'>
+          <div className='w-full max-w-[375px]'>
+            <Input
+              label='검색'
+              childrenPosition='left'
+              color='search'
+              placeholder='검색어를 입력해 주세요'
+              value={keyword}
+              onChange={(e) => onKeywordChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') onSearch();
+              }}
+            >
+              <Image src='/icon_search.svg' alt='' width={24} height={24} />
+            </Input>
+          </div>
+          <Button type='button' onClick={onSearch}>
+            검색
+          </Button>
         </div>
       </li>
     </ul>

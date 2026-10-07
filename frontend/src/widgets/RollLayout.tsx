@@ -28,7 +28,7 @@ export default function RoleLayout({ children, role }: RoleLayoutProps) {
       <Navibar />
       <div className='flex min-h-screen items-stretch'>
         <Sidebar role={role} />
-        <div className='flex-1 p-[60px]'>{children}</div>
+        <div className='min-w-0 flex-1 p-4 lg:p-8'>{children}</div>
       </div>
     </>
   );

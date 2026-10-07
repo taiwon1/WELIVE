@@ -1,4 +1,5 @@
 import { cn } from '@/shared/lib/helper';
+import { useId } from 'react';
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   color?: 'primary' | 'secondary' | 'error' | 'search';
@@ -20,22 +21,30 @@ export default function Input({
   className,
   disabled,
   labelClass,
+  id,
   ...props
 }: InputProps) {
   const isError = color === 'error' && !!errorText;
+  const generatedId = useId();
+  const inputId = id ?? generatedId;
 
   return (
     <>
       {label && (
-        <label className={cn('mb-3 block text-[14px] font-semibold', labelClass)}>{label}</label>
+        <label htmlFor={inputId} className={cn('mb-3 block text-[14px] font-semibold', labelClass)}>
+          {label}
+        </label>
       )}
       <div className='relative w-full'>
         <input
+          id={inputId}
+          aria-invalid={isError || undefined}
+          aria-describedby={isError ? inputId + '-error' : undefined}
           type={type}
           readOnly={readOnly}
           disabled={disabled}
           className={cn(
-            'h-12 w-full rounded-[12px] px-[16px] text-sm transition-all duration-200 ease-in-out outline-none',
+            'h-12 w-full rounded-[12px] px-[16px] text-base transition-all duration-200 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700',
             children ? 'pr-14' : '',
             label,
             children && childrenPosition === 'right' && 'pr-14',
@@ -62,7 +71,11 @@ export default function Input({
           </div>
         )}
       </div>
-      {isError && <p className='text-red mt-1 text-sm'>{errorText}</p>}
+      {isError && (
+        <p id={inputId + '-error'} className='text-red mt-1 text-sm'>
+          {errorText}
+        </p>
+      )}
     </>
   );
 }
