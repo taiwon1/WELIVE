@@ -14,6 +14,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import request from "supertest";
+import { AuthService } from "../src/services/auth.service";
 import app from "../src/app";
 import prisma, { pool } from "../src/lib/prisma";
 
@@ -102,7 +103,7 @@ describe("Complaint 도메인 통합 테스트", () => {
     await prisma.user.deleteMany();
 
     // 슈퍼어드민 생성 및 로그인
-    await request(app).post("/api/auth/signup/super-admin").send(superAdminPayload);
+    await new AuthService().createSuperAdmin({ ...superAdminPayload, role: "SUPER_ADMIN", joinStatus: "APPROVED" });
     const superAdminLogin = await request(app)
       .post("/api/auth/login")
       .send({ username: superAdminPayload.username, password: superAdminPayload.password });

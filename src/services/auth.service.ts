@@ -9,7 +9,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { verifyToken, expiresIn14Days } from "../utils/auth.utill";
 import prisma from "../lib/prisma";
-import { JoinStatus } from "@prisma/client";
+import { JoinStatus, Prisma } from "@prisma/client";
 
 export class AuthService {
   private authRepo = new AuthRepo();
@@ -140,7 +140,7 @@ export class AuthService {
     });
   };
 
-  createSuperAdmin = async (data: CreateSuperAdmin) => {
+  createSuperAdmin = async (data: CreateSuperAdmin, tx?: Prisma.TransactionClient) => {
     const hashedPassword = await this.prepareRegistration(data);
 
     // Prisma 저장을 위해 DB 스키마에 없는 passwordConfirm 필드를 제거
@@ -151,7 +151,7 @@ export class AuthService {
       password: hashedPassword,
       role: "SUPER_ADMIN",
       joinStatus: "APPROVED",
-    });
+    }, tx);
     return superAdmin;
   };
 
@@ -169,6 +169,10 @@ export class AuthService {
     const isPasswordValid = await bcrypt.compare(data.password, user.password);
     if (!isPasswordValid) {
       throw new UnauthorizedError("아이디 또는 비밀번호가 일치하지 않습니다.");
+    }
+
+    if (!user.isActive || (user.role === "USER" && user.resident?.residenceStatus !== "RESIDENCE")) {
+      throw new UnauthorizedError("현재 이용할 수 없는 계정입니다. 관리자에게 문의해주세요.");
     }
 
     if (user.joinStatus === "PENDING") {
@@ -217,9 +221,14 @@ export class AuthService {
 
     const user = savedToken.user;
 
+    if (!user.isActive || user.joinStatus !== "APPROVED" ||
+      (user.role === "USER" && user.resident?.residenceStatus !== "RESIDENCE")) {
+      throw new UnauthorizedError("현재 이용할 수 없는 계정입니다. 관리자에게 문의해주세요.");
+    }
+
     return await this.rotateTokens({
       ...user,
-      apartmentId: user.apartmentId ?? undefined,
+      apartmentId: (user.role === "USER" ? user.resident?.apartmentId : user.apartmentId) ?? undefined,
     });
   };
 

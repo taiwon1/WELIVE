@@ -33,8 +33,8 @@ export default function NoticeTable({
 
   return (
     <div>
-      <section className='mt-6 w-full rounded-[12px] border border-gray-200 p-8 text-[14px]'>
-        <table className='w-full'>
+      <section className='mt-6 w-full overflow-x-auto rounded-[12px] border border-gray-200 p-8 text-[14px]'>
+        <table className='w-full min-w-[1000px]'>
           <colgroup>
             {AdminNoticeCOLUMNS.map((col, i) => (
               <col style={{ width: col.width }} key={i} />
@@ -67,7 +67,7 @@ export default function NoticeTable({
                           row.isPinned ? (
                             <span style={{ color: '#FC5A50', fontWeight: 700 }}>중요</span>
                           ) : (
-                            noticeCount - (currentPage - 1) * 10 - index
+                            noticeCount - (currentPage - 1) * 11 - index
                           )
                         ) : col.key === 'title' && 'title' in row ? (
                           row.isPinned ? (

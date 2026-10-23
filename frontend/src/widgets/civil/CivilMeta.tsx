@@ -43,7 +43,7 @@ export default function CivilMeta({
   return (
     <div className='flex justify-between pt-8 pb-4.5'>
       <ul className='flex gap-4 text-[14px] text-gray-400'>
-        <li className='text-gray-500'>{date}</li>
+        <li className='text-gray-500'>{new Date(date).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}</li>
         <li className='text-gray-200'>|</li>
         <li>조회수&nbsp;&nbsp;{views}</li>
         <li className='text-gray-200'>|</li>

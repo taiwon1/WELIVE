@@ -128,8 +128,8 @@ export function ResidentCivilListFilter({
         </ul>
       </li>
       <li>
-        <div className='flex items-center justify-between'>
-          <div className='w-[375px]'>
+        <div className='flex flex-wrap items-end justify-between gap-3'>
+          <div className='w-full max-w-[375px]'>
             <Input
               label='검색'
               color='search'
@@ -141,9 +141,10 @@ export function ResidentCivilListFilter({
                 if (e.key === 'Enter') onSearch();
               }}
             >
-              <Image src='/icon_search.svg' alt='검색버튼' width={24} height={24} />
+              <Image src='/icon_search.svg' alt='' width={24} height={24} />
             </Input>
           </div>
+          <Button type='button' onClick={onSearch}>검색</Button>
           <Link href='/resident/civil/create'>
             <Button label='&nbsp;'>민원 등록하기</Button>
           </Link>

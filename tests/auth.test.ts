@@ -14,6 +14,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import request from "supertest";
+import { AuthService } from "../src/services/auth.service";
 import app from "../src/app";
 import prisma, { pool } from "../src/lib/prisma";
 
@@ -68,52 +69,29 @@ describe("Auth 도메인 통합 테스트", () => {
     // await db.end();
   });
 
-  describe("POST /api/auth/signup/super-admin", () => {
-    it("시스템 통합 관리자가 정상적으로 생성되어야 한다", async () => {
+  describe("초기 최고관리자 생성과 공개 가입 차단", () => {
+    const service = new AuthService();
+    const input = { ...payload, role: "SUPER_ADMIN" as const, joinStatus: "APPROVED" as const };
+    it("공개 HTTP 요청으로 최고관리자를 생성할 수 없다", async () => {
       const res = await request(app).post("/api/auth/signup/super-admin").send(payload);
-
-      expect(res.status).toBe(201);
-      expect(res.body).not.toHaveProperty("password");
-      expect(res.body).toMatchObject({
-        id: expect.any(String),
-        name: payload.name,
-        email: payload.email,
-        role: "SUPER_ADMIN",
-        joinStatus: "APPROVED",
-        isActive: true,
-      });
+      expect([401, 404]).toContain(res.status);
+      expect(await prisma.user.count({ where: { username: payload.username } })).toBe(0);
     });
-
-    it("중복 회원가입시 409 에러를 반환한다.", async () => {
-      const res = await request(app).post("/api/auth/signup/super-admin").send(payload);
-
-      expect(res.status).toBe(409);
-      expect(res.body.message).toBe("이미 사용 중인 아이디입니다.");
+    it("서버 초기 생성은 비밀번호를 노출하지 않는다", async () => {
+      const user = await service.createSuperAdmin(input);
+      expect(user).not.toHaveProperty("password");
+      expect(user).toMatchObject({ role: "SUPER_ADMIN", joinStatus: "APPROVED" });
     });
-
-    it("이메일만 중복될 경우에도 409 에러를 반환한다.", async () => {
-      const duplicateEmailPayload = {
-        ...payload,
-        username: "newadmin",
-        contact: "01000002222",
-      };
-
-      const res = await request(app).post("/api/auth/signup/super-admin").send(duplicateEmailPayload);
-
-      expect(res.status).toBe(409);
-      expect(res.body.message).toBe("이미 사용 중인 이메일입니다.");
+    it("중복 아이디를 거절한다", async () => {
+      await expect(service.createSuperAdmin(input)).rejects.toThrow("이미 사용 중인 아이디입니다.");
     });
-
-    it("연락처 중복 시 409 에러를 반환해야 한다", async () => {
-      const res = await request(app)
-        .post("/api/auth/signup/super-admin")
-        .send({
-          ...payload,
-          username: "new_superadmin",
-          email: "new@test.com",
-        });
-      expect(res.status).toBe(409);
-      expect(res.body.message).toBe("이미 등록된 연락처입니다.");
+    it("중복 이메일을 거절한다", async () => {
+      await expect(service.createSuperAdmin({ ...input, username: "newadmin", contact: "01000002222" }))
+        .rejects.toThrow("이미 사용 중인 이메일입니다.");
+    });
+    it("중복 연락처를 거절한다", async () => {
+      await expect(service.createSuperAdmin({ ...input, username: "newadmin", email: "new@test.com" }))
+        .rejects.toThrow("이미 등록된 연락처입니다.");
     });
   });
 

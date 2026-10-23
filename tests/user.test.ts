@@ -82,6 +82,7 @@ describe("User 도메인 통합 테스트", () => {
         contact: testUser.contact,
         role: "USER",
         joinStatus: "APPROVED",
+        resident: { create: { apartmentId: testApartment.id, name: testUser.name, contact: testUser.contact, building: "101", unitNumber: "101" } },
       },
     });
     testUserId = user.id;

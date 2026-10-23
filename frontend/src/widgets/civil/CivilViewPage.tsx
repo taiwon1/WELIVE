@@ -37,21 +37,27 @@ export default function CivilViewPage() {
     }[];
   };
 
+  const [loadError, setLoadError] = useState(false);
   const [complaint, setComplaint] = useState<ComplaintDetail | null>(null);
 
   useEffect(() => {
     if (!id || typeof id !== 'string') return;
 
+    let active = true;
+    setLoadError(false);
+    setComplaint(null);
     const fetchComplaint = async () => {
       try {
         const res = await axios.get(`/complaints/${id}`);
-        setComplaint(res.data);
+        if (active) setComplaint(res.data);
       } catch (error) {
         console.error('민원 데이터를 가져오는 중 오류 발생:', error);
+        if (active) setLoadError(true);
       }
     };
 
     fetchComplaint();
+    return () => { active = false; };
   }, [id]);
 
   const handleStatusChange = async (newStatus: string) => {
@@ -89,6 +95,12 @@ export default function CivilViewPage() {
     }
   };
 
+  if (loadError) {
+    return <div role='alert' className='py-16 text-center'>
+      <p>민원을 볼 수 없습니다. 삭제되었거나 열람 권한이 없을 수 있습니다.</p>
+      <Link className='mt-4 inline-block min-h-11 underline' href={isAdmin ? '/admin/civil' : '/resident/civil'}>민원 목록으로 돌아가기</Link>
+    </div>;
+  }
   if (!complaint) {
     return <div className='py-[100px] text-center text-gray-500'>불러오는 중...</div>;
   }
@@ -96,7 +108,7 @@ export default function CivilViewPage() {
   return (
     <div className='text-gray-900'>
       <div>
-        <Title category={complaint.category}>{complaint.title}</Title>
+        <Title category={complaint.category === 'COMPLAINT' ? '민원' : complaint.category}>{complaint.title}</Title>
         <CivilMeta
           date={complaint.createdAt}
           views={complaint.viewsCount}

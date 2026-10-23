@@ -14,6 +14,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import request from "supertest";
+import { AuthService } from "../src/services/auth.service";
 import app from "../src/app";
 import prisma, { pool } from "../src/lib/prisma";
 
@@ -107,7 +108,7 @@ describe("Comment 도메인 통합 테스트", () => {
     });
 
     // 슈퍼어드민 생성
-    await request(app).post("/api/auth/signup/super-admin").send(superAdminPayload);
+    await new AuthService().createSuperAdmin({ ...superAdminPayload, role: "SUPER_ADMIN", joinStatus: "APPROVED" });
 
     // 슈퍼어드민 로그인
     const superAdminLogin = await request(app)

@@ -4,6 +4,7 @@ import { ResidentNoticeTypes } from '../model/notice.types';
 import { fetchResidentNotices } from '../api/noticeApi';
 import { cn } from '@/shared/lib/helper';
 import Pagination from '@/shared/Pagination';
+import { formatDateToKST } from '@/shared/lib/formatDateToKST';
 
 const CATEGORY_LABEL_MAP = {
   MAINTENANCE: '정기점검',
@@ -72,8 +73,8 @@ export default function ResidentNoticeTable({ category, keyword }: Props) {
 
   return (
     <>
-      <section className='mt-6 w-full rounded-[12px] border border-gray-200 p-8 text-[14px]'>
-        <table className='w-full table-fixed'>
+      <section className='mt-6 w-full overflow-x-auto rounded-[12px] border border-gray-200 p-8 text-[14px]'>
+        <table className='w-full min-w-[1000px] table-fixed'>
           <colgroup>
             {COLUMNS.map((col, i) => (
               <col style={{ width: col.width }} key={i} />
@@ -112,6 +113,8 @@ export default function ResidentNoticeTable({ category, keyword }: Props) {
                               {notice.title}
                             </Link>
                           </div>
+                        ) : col.key === 'createdAt' ? (
+                          formatDateToKST(notice.createdAt)
                         ) : col.key === 'category' ? (
                           CATEGORY_LABEL_MAP[notice.category]
                         ) : (

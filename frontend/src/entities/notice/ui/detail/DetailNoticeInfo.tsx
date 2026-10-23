@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import { formatDateToKST } from '@/shared/lib/formatDateToKST';
 import { NoticeDetailProps } from '@/entities/notice/model/notice.types';
 import { translateCategory } from '@/shared/lib/translateCategory';
 
@@ -24,7 +25,7 @@ export default function DetailNoticeInfo({
         <ul className='flex gap-4 text-[14px] text-gray-400'>
           <li className='text-main'>{translateCategory(data.category)}</li>
           <li className='text-gray-200'>|</li>
-          <li className='text-gray-500'>{data.createdAt}</li>
+          <li className='text-gray-500'>{formatDateToKST(data.createdAt)}</li>
           <li className='text-gray-200'>|</li>
           <li>조회수 {data.viewsCount}</li>
           <li className='text-gray-200'>|</li>
