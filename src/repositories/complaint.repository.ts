@@ -11,6 +11,8 @@ export const findComplaintById = async (complaintId: string) => {
   const complaint = await prisma.complaint.findUnique({
     where: { id: complaintId },
     include: {
+      board: { select: { apartmentId: true } },
+      incidentLink: true,
       author: { select: { id: true, name: true, apartmentDong: true, apartmentHo: true } },
     },
   });
@@ -33,13 +35,18 @@ export const findComplaints = async (
   isAdmin: boolean,
   requestUserId: string,
 ) => {
-  const { page = 1, limit = 11, status, isPublic, dong, ho, keyword } = query;
+  const { page = 1, limit = 11, status, isPublic, dong, ho, keyword, attention, unlinked } = query;
 
   const where: any = {
     board: { apartmentId },
   };
 
   if (status) where.status = status;
+  if (isAdmin && attention === 'unread') where.adminReadAt = null;
+  if (isAdmin && attention === 'unfinished') {
+    where.AND = [{ status: { not: 'RESOLVED' } }];
+  }
+  if (isAdmin && unlinked) where.incidentLink = null;
   if (dong) where.dong = dong;
   if (ho) where.ho = ho;
   if (keyword) {
@@ -51,10 +58,10 @@ export const findComplaints = async (
 
   // 비공개 처리: 관리자는 전체 조회, 입주민은 본인 것 + 공개글만
   if (!isAdmin) {
-    where.OR = [
+    where.AND = [...(where.AND ?? []), { OR: [
       { isPublic: true },
       { authorId: requestUserId },
-    ];
+    ] }];
   } else if (isPublic !== undefined) {
     where.isPublic = isPublic;
   }
@@ -63,6 +70,7 @@ export const findComplaints = async (
     prisma.complaint.findMany({
       where,
       include: {
+        incidentLink: true,
         author: { select: { id: true, name: true, apartmentDong: true, apartmentHo: true } },
         _count: { select: { comments: true } },
       },
@@ -88,6 +96,7 @@ export const createComplaint = async (authorId: string, body: CreateComplaintBod
       title: body.title,
       content: body.content,
       isPublic: body.isPublic,
+      adminReadAt: null,
       boardId: body.boardId,
       authorId,
       dong: author?.apartmentDong ?? '',
@@ -107,6 +116,7 @@ export const updateComplaint = async (complaintId: string, body: UpdateComplaint
       title: body.title,
       content: body.content,
       isPublic: body.isPublic,
+      adminReadAt: null,
     },
     include: {
       author: { select: { id: true, name: true } },

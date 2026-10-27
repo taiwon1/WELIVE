@@ -5,7 +5,6 @@ import { validateData } from "../middlewares/validation.middleware";
 import {
   AdminStruct,
   LoginStruct,
-  SuperAdminStruct,
   UpdateStatusStruct,
   UserStruct,
   UpdateAdminStruct,
@@ -26,8 +25,7 @@ authRouter.post("/signup", validateData(UserStruct, "body"), authController.crea
 /** 아파트 관리자(Admin) 회원가입 */
 authRouter.post("/signup/admin", validateData(AdminStruct, "body"), authController.createAdmin);
 
-/** 시스템 통합 관리자(Super Admin) 회원가입 */
-authRouter.post("/signup/super-admin", validateData(SuperAdminStruct, "body"), authController.createSuperAdmin);
+// 최고관리자는 서버의 bootstrap-admin 명령으로만 생성한다.
 
 /** 로그인 및 인증 토큰 발급 */
 authRouter.post("/login", validateData(LoginStruct, "body"), authController.login);

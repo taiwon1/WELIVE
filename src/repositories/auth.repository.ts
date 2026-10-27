@@ -86,7 +86,11 @@ export class AuthRepo {
       select: {
         expiresAt: true,
         userId: true,
-        user: { select: { id: true, username: true, role: true, apartmentId: true } },
+        user: { select: {
+          id: true, username: true, role: true, apartmentId: true,
+          isActive: true, joinStatus: true,
+          resident: { select: { apartmentId: true, residenceStatus: true } },
+        } },
       },
     });
   };
@@ -267,6 +271,7 @@ export class AuthRepo {
       where: {
         OR: [{ id: residentId }, { residentId: residentId }],
       },
+      include: { resident: { select: { apartmentId: true } } },
     });
   };
 

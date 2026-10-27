@@ -3,13 +3,14 @@ import { AuthRepo } from "../repositories/auth.repository";
 import { ApartRepo } from "../repositories/apartment.repository";
 import { ResidentsRepo } from "../repositories/residents.repository";
 import { BadRequestError, NotFoundError, UnauthorizedError, ConflictError } from "../errors/errors";
+import { getTenantActor } from "./tenant-access.service";
 import { LoginResponseDto } from "../models/auth.model";
 import { Status } from "../types/auth.type";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { verifyToken, expiresIn14Days } from "../utils/auth.utill";
 import prisma from "../lib/prisma";
-import { JoinStatus } from "@prisma/client";
+import { JoinStatus, Prisma } from "@prisma/client";
 
 export class AuthService {
   private authRepo = new AuthRepo();
@@ -52,7 +53,16 @@ export class AuthService {
         throw new ConflictError("이미 해당 호수에 가입된 세대주가 존재합니다.");
       }
 
-      let resident = await this.residentsRepo.findByNameAndContact(data.name, data.contact, tx);
+      let resident = await this.residentsRepo.findByContact(data.contact, tx);
+      if (resident && (
+        resident.apartmentId !== apartmentId ||
+        resident.name !== data.name ||
+        resident.building !== data.apartmentDong ||
+        resident.unitNumber !== data.apartmentHo ||
+        resident.residenceStatus !== "RESIDENCE"
+      )) {
+        throw new ConflictError("입주민 등록 정보가 일치하지 않습니다.");
+      }
 
       let joinStatus: "APPROVED" | "PENDING" = "PENDING";
       const isRegistered = true;
@@ -140,7 +150,7 @@ export class AuthService {
     });
   };
 
-  createSuperAdmin = async (data: CreateSuperAdmin) => {
+  createSuperAdmin = async (data: CreateSuperAdmin, tx?: Prisma.TransactionClient) => {
     const hashedPassword = await this.prepareRegistration(data);
 
     // Prisma 저장을 위해 DB 스키마에 없는 passwordConfirm 필드를 제거
@@ -151,7 +161,7 @@ export class AuthService {
       password: hashedPassword,
       role: "SUPER_ADMIN",
       joinStatus: "APPROVED",
-    });
+    }, tx);
     return superAdmin;
   };
 
@@ -169,6 +179,10 @@ export class AuthService {
     const isPasswordValid = await bcrypt.compare(data.password, user.password);
     if (!isPasswordValid) {
       throw new UnauthorizedError("아이디 또는 비밀번호가 일치하지 않습니다.");
+    }
+
+    if (!user.isActive || (user.role === "USER" && user.resident?.residenceStatus !== "RESIDENCE")) {
+      throw new UnauthorizedError("현재 이용할 수 없는 계정입니다. 관리자에게 문의해주세요.");
     }
 
     if (user.joinStatus === "PENDING") {
@@ -217,9 +231,14 @@ export class AuthService {
 
     const user = savedToken.user;
 
+    if (!user.isActive || user.joinStatus !== "APPROVED" ||
+      (user.role === "USER" && user.resident?.residenceStatus !== "RESIDENCE")) {
+      throw new UnauthorizedError("현재 이용할 수 없는 계정입니다. 관리자에게 문의해주세요.");
+    }
+
     return await this.rotateTokens({
       ...user,
-      apartmentId: user.apartmentId ?? undefined,
+      apartmentId: (user.role === "USER" ? user.resident?.apartmentId : user.apartmentId) ?? undefined,
     });
   };
 
@@ -269,12 +288,17 @@ export class AuthService {
    * @param residentId - 상태를 변경할 주민의 ID
    * @param status - 변경할 상태 (APPROVED/REJECTED)
    */
-  updateResidentStatus = async (residentId: string, status: JoinStatus) => {
+  updateResidentStatus = async (adminId: string, residentId: string, status: JoinStatus) => {
+    const actor = await getTenantActor(adminId);
+    if (!actor.isAdmin) throw new UnauthorizedError("관리자 권한이 필요합니다.");
     const user = await this.authRepo.findResidentUserById(residentId);
 
     if (!user) throw new NotFoundError("해당 사용자를 찾을 수 없습니다.");
     if (user.role !== "USER") {
       throw new BadRequestError("해당 사용자의 상태를 변경할 수 없습니다.");
+    }
+    if (user.resident?.apartmentId !== actor.apartmentId) {
+      throw new NotFoundError("해당 사용자를 찾을 수 없습니다.");
     }
     if (user.joinStatus === status) return;
 
@@ -303,13 +327,9 @@ export class AuthService {
    * @throws {NotFoundError} 관리자 정보 또는 관리 중인 아파트 정보가 없을 경우
    */
   bulkUpdateResidentStatus = async (userId: string, status: JoinStatus) => {
-    const admin = await this.authRepo.findById(userId);
-    const apartmentId = admin?.apartmentId;
-
-    if (!admin || !apartmentId) {
-      throw new NotFoundError("관리 중인 아파트 정보가 존재하지 않습니다.");
-    }
-    await this.authRepo.bulkUpdateResidentStatus(apartmentId, status);
+    const actor = await getTenantActor(userId);
+    if (!actor.isAdmin) throw new UnauthorizedError("관리자 권한이 필요합니다.");
+    await this.authRepo.bulkUpdateResidentStatus(actor.apartmentId, status);
   };
 
   /**

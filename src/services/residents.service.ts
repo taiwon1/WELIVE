@@ -28,7 +28,7 @@ export class ResidentsService {
   };
 
   createResident = async (residentData: CreateResidentDTO, apartmentId: string) => {
-    const user = await this.userRepo.findByNameAndContact(residentData.name, residentData.contact);
+    const user = await this.userRepo.findByNameAndContact(residentData.name, residentData.contact, apartmentId);
 
     const isRegistered = !!user;
 
@@ -54,6 +54,9 @@ export class ResidentsService {
 
     const apartment = await findApartmentPublicById(apartmentId);
     if (!apartment) throw new NotFoundError("해당 아파트를 찾을 수 없습니다.");
+    if (user.apartmentName !== apartment.name || !user.apartmentDong || !user.apartmentHo) {
+      throw new NotFoundError("해당 단지의 가입 신청자를 찾을 수 없습니다.");
+    }
 
     const result = await prisma.$transaction(async (tx) => {
       const resident = await this.residentsRepo.createResident(

@@ -4,12 +4,9 @@ import { CreateResidentDTO } from "../structs/resident.struct";
 import { CreateResidentDto } from "../types/resident.type";
 
 export class ResidentsRepo {
-  findByNameAndContact = async (name: string, contact: string, tx?: Prisma.TransactionClient) => {
+  findByContact = async (contact: string, tx?: Prisma.TransactionClient) => {
     const client = tx || prisma;
-
-    return await client.resident.findUnique({
-      where: { contact, name },
-    });
+    return await client.resident.findUnique({ where: { contact } });
   };
 
   updateIsRegistered = async (id: string, isRegistered: boolean, tx?: Prisma.TransactionClient) => {

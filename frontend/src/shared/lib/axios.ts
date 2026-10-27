@@ -16,6 +16,7 @@ axiosInstance.interceptors.response.use(
     const originalRequest = error.config;
 
     const isRefreshUrl = originalRequest.url?.includes('/auth/refresh');
+    const isSessionCheckUrl = originalRequest.url?.includes('/users/me');
 
     const isAuthUrl =
       originalRequest.url?.includes('/auth/login') ||
@@ -33,7 +34,7 @@ axiosInstance.interceptors.response.use(
         return axiosInstance(originalRequest);
       } catch (refreshError) {
         console.error('리프레시 에러', refreshError);
-        if (typeof window !== 'undefined') {
+        if (typeof window !== 'undefined' && !isSessionCheckUrl) {
           window.location.replace(new URL('/', window.location.origin).toString());
         }
       }

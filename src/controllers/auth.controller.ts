@@ -152,7 +152,7 @@ export class AuthController {
 
     const { residentId } = req.params;
     const { status } = req.body;
-    await this.authService.updateResidentStatus(residentId, status);
+    await this.authService.updateResidentStatus(req.user.id, residentId, status);
 
     res.status(200).json({ message: "작업이 성공적으로 완료되었습니다." });
   };

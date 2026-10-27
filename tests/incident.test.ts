@@ -169,8 +169,8 @@ describe('처리 이력과 멱등 알림', () => {
     expect(await prisma.incident.findUnique({ where: { id: i.id } })).toMatchObject({ version: 1, status: 'IN_PROGRESS' });
     const detail = await api('get', `/${i.id}`, resident);
     expect(detail.body.updates[0].content).toBe(body.content);
-    // Resolving the incident does not silently resolve residents' individual complaints.
-    expect(await prisma.complaint.findUnique({ where: { id: a.id } })).toMatchObject({ status: 'PENDING' });
+    expect(await prisma.complaint.findUnique({ where: { id: a.id } })).toMatchObject({ status: 'IN_PROGRESS' });
+    expect(await prisma.complaint.count({ where: { id: { in: [a.id, b.id, c.id] }, status: 'IN_PROGRESS', adminReadAt: { not: null } } })).toBe(3);
   });
   it('동일 requestId의 다른 내용은 409로 거절한다', async () => {
     const i = await incident(); const body = updateBody();
@@ -186,10 +186,13 @@ describe('처리 이력과 멱등 알림', () => {
   });
   it('진행→완료→재개→재완료는 별개 이벤트로 알림을 생성한다', async () => {
     const i = await incident();
+    const noticesBefore = await prisma.notice.count();
     for (const [version, status] of ['IN_PROGRESS', 'RESOLVED', 'IN_PROGRESS', 'RESOLVED'].entries()) {
       expect((await api('post', `/${i.id}/updates`).send(updateBody({ expectedVersion: version, status }))).status).toBe(200);
+      expect(await prisma.complaint.count({ where: { incidentLink: { incidentId: i.id }, status: status as 'IN_PROGRESS' | 'RESOLVED' } })).toBe(1);
     }
     expect(await prisma.notification.count({ where: { sourceId: i.id, userId: resident } })).toBe(4);
+    expect(await prisma.notice.count()).toBe(noticesBefore);
     expect((await api('get', `/${i.id}/updates?limit=2`)).body.updates).toHaveLength(2);
   });
   it('허용되지 않는 상태 전이와 날짜를 거절한다', async () => {
@@ -214,8 +217,63 @@ describe('처리 이력과 멱등 알림', () => {
       expect(await prisma.incidentUpdate.count({ where: { incidentId: i.id } })).toBe(0);
       expect(await prisma.notification.count({ where: { sourceId: i.id } })).toBe(0);
       expect(await prisma.incident.findUnique({ where: { id: i.id } })).toMatchObject({ version: 0, status: 'PENDING' });
+      expect(await prisma.complaint.findFirst({ where: { incidentLink: { incidentId: i.id } } })).toMatchObject({ status: 'PENDING', adminReadAt: null });
     } finally {
       await prisma.$executeRawUnsafe('ALTER TABLE "NotificationOutbox" DROP CONSTRAINT incident_test_failure');
     }
+  });
+});
+
+async function complaintApi(method: 'get' | 'patch', path: string, userId: string) {
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId }, include: { resident: true } });
+  const access = jwt.sign({ id: userId, role: user.role, apartmentId: user.apartmentId ?? user.resident?.apartmentId }, process.env.JWT_ACCESS_SECRET!);
+  return { send: (body?: object) => request(app)[method]('/api/complaints' + path).set('Authorization', 'Bearer ' + access).send(body) };
+}
+
+describe('관리자 민원 작업 흐름', () => {
+  it('주민 조회는 미확인으로 유지하고 소속 관리자의 조회만 확인 처리한다', async () => {
+    const c = await complaint();
+    expect((await (await complaintApi('get', '/' + c.id, resident)).send()).status).toBe(200);
+    expect((await prisma.complaint.findUniqueOrThrow({ where: { id: c.id } })).adminReadAt).toBeNull();
+    expect((await (await complaintApi('get', '/' + c.id, otherAdmin)).send()).status).toBe(404);
+    expect((await (await complaintApi('get', '/' + c.id, admin)).send()).status).toBe(200);
+    expect((await prisma.complaint.findUniqueOrThrow({ where: { id: c.id } })).adminReadAt).not.toBeNull();
+    const unread = await (await complaintApi('get', '?attention=unread&limit=100', admin)).send();
+    expect(unread.body.complaints.some((item: { complaintId: string }) => item.complaintId === c.id)).toBe(false);
+  });
+
+  it('내용을 수정한 민원은 다시 미확인으로 표시한다', async () => {
+    const c = await complaint();
+    await (await complaintApi('get', '/' + c.id, admin)).send();
+    expect((await (await complaintApi('patch', '/' + c.id, resident)).send({ title: '수정된 민원', content: '수정 내용', isPublic: false })).status).toBe(200);
+    expect((await prisma.complaint.findUniqueOrThrow({ where: { id: c.id } })).adminReadAt).toBeNull();
+  });
+
+  it('연결된 민원은 개별 상태 변경을 거절하고 목록에 공동 문제를 표시한다', async () => {
+    const c = await complaint(); const i = await incident([c.id]);
+    expect((await (await complaintApi('patch', '/' + c.id + '/status', admin)).send({ status: 'RESOLVED' })).status).toBe(409);
+    const list = await (await complaintApi('get', '?limit=100', admin)).send();
+    expect(list.body.complaints.find((item: { complaintId: string }) => item.complaintId === c.id).incidentId).toBe(i.id);
+    const candidates = await (await complaintApi('get', '?unlinked=true&attention=unfinished&limit=100', admin)).send();
+    expect(candidates.body.complaints.some((item: { complaintId: string }) => item.complaintId === c.id)).toBe(false);
+  });
+
+  it('나중에 연결한 민원도 현재 공동 문제 상태를 따르고 해제 후에는 상태를 유지한다', async () => {
+    const i = await incident(); const c = await complaint();
+    await api('post', '/' + i.id + '/updates').send(updateBody());
+    await api('post', '/' + i.id + '/complaints').send({ complaintIds: [c.id] });
+    expect((await prisma.complaint.findUniqueOrThrow({ where: { id: c.id } })).status).toBe('IN_PROGRESS');
+    await api('delete', '/' + i.id + '/complaints/' + c.id);
+    await api('post', '/' + i.id + '/updates').send(updateBody({ expectedVersion: 1, status: 'RESOLVED' }));
+    expect((await prisma.complaint.findUniqueOrThrow({ where: { id: c.id } })).status).toBe('IN_PROGRESS');
+    expect((await (await complaintApi('patch', '/' + c.id + '/status', admin)).send({ status: 'PENDING' })).status).toBe(200);
+  });
+
+  it('처리 중 민원을 새로 묶어도 처리 대기로 돌아가지 않는다', async () => {
+    const a = await complaint(), b = await complaint();
+    await prisma.complaint.update({ where: { id: a.id }, data: { status: 'IN_PROGRESS' } });
+    const i = await incident([a.id, b.id]);
+    expect((await api('get', '/' + i.id)).body.status).toBe('IN_PROGRESS');
+    expect((await prisma.complaint.findUniqueOrThrow({ where: { id: b.id } })).status).toBe('IN_PROGRESS');
   });
 });

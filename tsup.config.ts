@@ -1,7 +1,7 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/server.ts"],
+  entry: ["src/server.ts", "src/cli/bootstrap-admin.ts"],
   outDir: "dist",
   format: ["esm"],
   target: "node20",

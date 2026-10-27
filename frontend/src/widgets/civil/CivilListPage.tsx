@@ -7,6 +7,7 @@ import Title from '@/shared/Title';
 import { useState, useMemo } from 'react';
 import axios from '@/shared/lib/axios';
 import { useAuthStore } from '@/shared/store/auth.store';
+import Link from 'next/link';
 
 const ITEMS_PER_PAGE = 11;
 
@@ -22,6 +23,7 @@ export default function CivilListPage() {
   const [visibility, setVisibility] = useState('전체');
   const [dong, setDong] = useState('전체');
   const [ho, setHo] = useState('전체');
+  const [attention, setAttention] = useState<string | undefined>();
 
   const { pathname } = useRouter();
   const role = pathname.startsWith('/admin') ? 'admin' : 'resident';
@@ -37,6 +39,8 @@ export default function CivilListPage() {
   const {
     data: { complaints, totalCount },
     loading,
+    error,
+    refetch,
   } = useCivilList({
     page,
     limit: ITEMS_PER_PAGE,
@@ -45,6 +49,7 @@ export default function CivilListPage() {
     dong: dongParam,
     ho: hoParam,
     keyword: keywordParam,
+    attention,
   });
 
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
@@ -75,6 +80,7 @@ export default function CivilListPage() {
       );
 
       setPage(1);
+      refetch();
     } catch (error) {
       console.error('처리 상태 업데이트 실패:', error);
       window.alert('상태 변경에 실패했습니다.');
@@ -84,6 +90,52 @@ export default function CivilListPage() {
   return (
     <div>
       <Title className='mb-10'>{role === 'admin' ? '민원 관리' : '민원 남기기'}</Title>
+      {role === 'admin' && (
+        <div className='mb-6 flex flex-wrap items-center gap-3'>
+          {[
+            ['', '전체'],
+            ['unread', '미확인'],
+            ['unfinished', '미처리'],
+          ].map(([value, label]) => (
+            <button
+              key={label}
+              type='button'
+              aria-pressed={(attention ?? '') === value}
+              className={
+                'min-h-11 rounded-xl border px-4 ' +
+                ((attention ?? '') === value
+                  ? 'border-blue-800 bg-blue-50 font-semibold text-blue-900'
+                  : 'border-gray-300')
+              }
+              onClick={() => {
+                setAttention(value || undefined);
+                setStatus('전체');
+                setPage(1);
+              }}
+            >
+              {label}
+            </button>
+          ))}
+          <Link
+            className='ml-auto min-h-11 content-center font-semibold underline'
+            href='/admin/incidents'
+          >
+            같은 문제의 민원 묶기
+          </Link>
+          <p className='w-full text-sm text-gray-600'>
+            미확인은 관리자가 아직 읽지 않은 민원입니다. 미처리에는 처리 대기와 처리 중인 민원이
+            포함됩니다.
+          </p>
+        </div>
+      )}
+      {!!error && (
+        <p role='alert' className='mb-4 text-red-800'>
+          민원을 불러오지 못했습니다.{' '}
+          <button className='min-h-11 underline' onClick={refetch}>
+            다시 시도
+          </button>
+        </p>
+      )}
 
       {role === 'admin' ? (
         <AdminCivilListFilter

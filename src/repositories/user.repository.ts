@@ -36,9 +36,9 @@ export class UserRepo {
     });
   };
 
-  findByNameAndContact = async (name: string, contact: string) => {
+  findByNameAndContact = async (name: string, contact: string, apartmentId: string) => {
     return await prisma.user.findFirst({
-      where: { name, contact },
+      where: { name, contact, resident: { apartmentId } },
     });
   };
 

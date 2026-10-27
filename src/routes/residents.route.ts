@@ -1,4 +1,5 @@
 import express from "express";
+import { tenantMiddleware } from "../middlewares/tenant.middleware";
 import { authMiddleware } from "../middlewares/auth.middleware";
 import { ResidentsController } from "../controllers/residents.controller";
 import { validateData } from "../middlewares/validation.middleware";
@@ -11,7 +12,7 @@ import { ResidentIdStruct } from "../structs/auth.struct";
 const residentRoute = express.Router();
 
 // 토큰 및 유저권한 확인
-residentRoute.use(authMiddleware, authorizeRole(["ADMIN"]));
+residentRoute.use(authMiddleware, tenantMiddleware, authorizeRole(["ADMIN"]));
 
 const residentsController = new ResidentsController();
 

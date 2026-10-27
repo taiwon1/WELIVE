@@ -10,6 +10,7 @@ type Params = {
   status?: string;
   isPublic?: boolean;
   keyword?: string;
+  attention?: string;
 };
 
 type CivilResponse = {
@@ -17,12 +18,23 @@ type CivilResponse = {
   totalCount: number;
 };
 
-export function useCivilList({ page, limit, status, isPublic, dong, ho, keyword }: Params) {
+export function useCivilList({
+  page,
+  limit,
+  status,
+  isPublic,
+  dong,
+  ho,
+  keyword,
+  attention,
+}: Params) {
   const [data, setData] = useState<CivilResponse>({ complaints: [], totalCount: 0 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const [revision, setRevision] = useState(0);
 
   useEffect(() => {
+    let active = true;
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -32,25 +44,30 @@ export function useCivilList({ page, limit, status, isPublic, dong, ho, keyword 
             page,
             limit,
             ...Object.fromEntries(
-              Object.entries({ status, isPublic, dong, ho, keyword }).filter(
+              Object.entries({ status, isPublic, dong, ho, keyword, attention }).filter(
                 ([, value]) => value !== undefined,
               ),
             ),
           },
         });
 
-        setData(res.data || { complaints: [], totalCount: 0 });
+        if (active) setData(res.data || { complaints: [], totalCount: 0 });
       } catch (err) {
         console.error('민원 데이터 불러오기 실패:', err);
-        setError(err);
-        setData({ complaints: [], totalCount: 0 });
+        if (active) {
+          setError(err);
+          setData({ complaints: [], totalCount: 0 });
+        }
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
 
     fetchData();
-  }, [page, limit, status, isPublic, dong, ho, keyword]);
+    return () => {
+      active = false;
+    };
+  }, [page, limit, status, isPublic, dong, ho, keyword, attention, revision]);
 
-  return { data, loading, error };
+  return { data, loading, error, refetch: () => setRevision((value) => value + 1) };
 }

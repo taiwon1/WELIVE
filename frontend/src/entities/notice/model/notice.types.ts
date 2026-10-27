@@ -86,7 +86,7 @@ export interface EditNoticeParam {
   value: AdminNoticeDetailTypes[keyof AdminNoticeDetailTypes];
 }
 export interface NoticeMainProps {
-  notice?: AdminNoticeDetailTypes | NoticeDetailProps | null;
+  notice?: Partial<Pick<AdminNoticeDetailTypes, 'title' | 'content'>> | null;
   handleNotice: (params: EditNoticeParam) => void;
   handleSubmit: () => void;
   isDisabled?: boolean;

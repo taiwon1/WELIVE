@@ -177,6 +177,7 @@ model Complaint {
   author   User   @relation("UserComplaints", fields: [authorId], references: [id])
 
   status        ComplaintStatus @default(PENDING)
+  adminReadAt   DateTime?
   viewsCount    Int             @default(0)
   commentsCount Int             @default(0)
   dong          String          @default("")

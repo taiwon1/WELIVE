@@ -29,6 +29,8 @@ export interface ComplaintListItem {
   status: ComplaintStatus;
   dong: string;
   ho: string;
+  adminReadAt?: Date | null;
+  incidentId: string | null;
 }
 
 export interface ComplaintListResponse {
@@ -57,6 +59,7 @@ export interface ComplaintDetail {
   content: string;
   isPublic: boolean;
   comments: ComplaintComment[];
+  incidentId: string | null;
 }
 
 export interface ComplaintListQuery {
@@ -67,4 +70,6 @@ export interface ComplaintListQuery {
   dong?: string;
   ho?: string;
   keyword?: string;
+  attention?: 'unread' | 'unfinished';
+  unlinked?: boolean;
 }

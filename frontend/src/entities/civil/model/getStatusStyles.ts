@@ -1,9 +1,9 @@
 export const getVisibilityStyle = (status: string) => {
   switch (status) {
     case '비공개':
-      return { bg: 'bg-[#ECF7FF]', text: 'text-[#7CC5FA]' };
+      return { bg: 'bg-blue-50', text: 'text-blue-900' };
     case '공개':
-      return { bg: 'bg-[#7CC5FA]', text: 'text-white' };
+      return { bg: 'bg-blue-100', text: 'text-blue-900' };
     default:
       return { bg: '', text: '' };
   }
@@ -12,11 +12,12 @@ export const getVisibilityStyle = (status: string) => {
 export const getProcessStyle = (status: string) => {
   switch (status) {
     case '접수전':
-      return { bg: 'bg-[#EBF7EF]', text: 'text-main' };
+    case '처리 대기':
+      return { bg: 'bg-amber-100', text: 'text-amber-900' };
     case '처리중':
       return { bg: 'bg-main', text: 'text-white' };
     case '처리완료':
-      return { bg: 'bg-gray-50', text: 'text-200' };
+      return { bg: 'bg-gray-100', text: 'text-gray-700' };
     default:
       return { bg: '', text: '' };
   }

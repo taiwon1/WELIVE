@@ -23,7 +23,16 @@ export interface IncidentUpdate {
 
 export interface IncidentDetail extends IncidentSummary {
   complaintIds: string[];
+  complaints: { id: string; title: string }[];
   updates: IncidentUpdate[];
+}
+
+export async function getIncidentUpdates(id: string, page: number) {
+  const response = await axios.get<{ updates: IncidentUpdate[]; totalCount: number }>(
+    `/incidents/${id}/updates`,
+    { params: { page, limit: 20 } },
+  );
+  return response.data;
 }
 
 export async function getIncidents(page = 1, limit = 20) {

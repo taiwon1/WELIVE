@@ -1,10 +1,8 @@
 name: Deploy to EC2
 
+# EC2/ECR 방식은 포트폴리오용 Lightsail 배포에 사용하지 않는다.
+# 기존 배포 설정을 남겨두되 수동 실행만 허용한다.
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
-    branches: [main]
   workflow_dispatch:
 
 concurrency:

@@ -10,4 +10,6 @@ export interface CivilListType {
   status: 'PENDING' | 'IN_PROGRESS' | 'RESOLVED';
   dong: string;
   ho: string;
+  adminReadAt?: string | null;
+  incidentId?: string | null;
 }

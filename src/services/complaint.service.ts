@@ -12,11 +12,12 @@ import {
   ComplaintListItem,
   ComplaintListResponse,
 } from '../types/complaint.types';
-import { NotFoundError, ForbiddenError, BadRequestError } from '../errors/errors';
+import { NotFoundError, ForbiddenError, BadRequestError, ConflictError } from '../errors/errors';
 import prisma from '../lib/prisma';
+import { getTenantActor, requireBoardInApartment } from './tenant-access.service';
 
 // 응답 포맷 - 목록
-const formatComplaintListItem = (complaint: any): ComplaintListItem => ({
+const formatComplaintListItem = (complaint: any, isAdmin: boolean, userId: string): ComplaintListItem => ({
   complaintId: complaint.id,
   userId: complaint.authorId,
   title: complaint.title,
@@ -28,10 +29,12 @@ const formatComplaintListItem = (complaint: any): ComplaintListItem => ({
   status: complaint.status,
   dong: complaint.dong ?? '',
   ho: complaint.ho ?? '',
+  ...(isAdmin && { adminReadAt: complaint.adminReadAt }),
+  incidentId: isAdmin || complaint.authorId === userId ? complaint.incidentLink?.incidentId ?? null : null,
 });
 
 // 응답 포맷 - 상세
-const formatComplaintDetail = (complaint: any): ComplaintDetail => ({
+const formatComplaintDetail = (complaint: any, showIncident: boolean): ComplaintDetail => ({
   complaintId: complaint.id,
   title: complaint.title,
   category: 'COMPLAINT',
@@ -42,6 +45,7 @@ const formatComplaintDetail = (complaint: any): ComplaintDetail => ({
   status: complaint.status,
   content: complaint.content,
   isPublic: complaint.isPublic,
+  incidentId: showIncident ? complaint.incidentLink?.incidentId ?? null : null,
   comments: (complaint.comments ?? []).map((c: any) => ({
     id: c.id,
     userId: c.authorId,
@@ -72,6 +76,9 @@ export const getComplaints = async (
   isAdmin: boolean,
   requestUserId: string,
 ): Promise<ComplaintListResponse> => {
+  const actor = await getTenantActor(requestUserId);
+  if (actor.apartmentId !== apartmentId) throw new ForbiddenError('소속 단지를 확인해주세요.');
+  isAdmin = actor.isAdmin;
   const { complaints, totalCount } = await complaintRepository.findComplaints(
     apartmentId,
     query,
@@ -80,7 +87,7 @@ export const getComplaints = async (
   );
 
   return {
-    complaints: complaints.map(formatComplaintListItem),
+    complaints: complaints.map(item => formatComplaintListItem(item, isAdmin, requestUserId)),
     totalCount,
   };
 };
@@ -95,15 +102,25 @@ export const getComplaintById = async (
 
   if (!complaint) throw new NotFoundError('민원을 찾을 수 없습니다.');
 
+  const actor = await getTenantActor(requestUserId);
+  if (actor.apartmentId !== complaint.board.apartmentId) throw new NotFoundError('민원을 찾을 수 없습니다.');
+  isAdmin = actor.isAdmin;
+
   // 비공개 글 접근 권한 체크
   if (!complaint.isPublic && !isAdmin && complaint.authorId !== requestUserId) {
     throw new ForbiddenError('비공개 민원은 작성자와 관리자만 열람 가능합니다.');
   }
 
   // 조회수 증가
+  if (isAdmin) {
+    await prisma.complaint.updateMany({
+      where: { id: complaintId, adminReadAt: null, updatedAt: complaint.updatedAt },
+      data: { adminReadAt: new Date() },
+    });
+  }
   await complaintRepository.incrementViewsCount(complaintId);
 
-  return formatComplaintDetail({ ...complaint, viewsCount: complaint.viewsCount + 1 });
+  return formatComplaintDetail({ ...complaint, viewsCount: complaint.viewsCount + 1 }, isAdmin || complaint.authorId === requestUserId);
 };
 
 // 민원 등록
@@ -111,6 +128,9 @@ export const createComplaint = async (
   authorId: string,
   body: CreateComplaintBody,
 ) => {
+  const actor = await getTenantActor(authorId);
+  if (actor.isAdmin) throw new ForbiddenError('입주민만 민원을 등록할 수 있습니다.');
+  await requireBoardInApartment(body.boardId, actor.apartmentId, 'COMPLAINT');
   const complaint = await complaintRepository.createComplaint(authorId, body);
 
   // boardId로 관리자 ID 조회 후 알림 전송
@@ -137,6 +157,8 @@ export const updateComplaint = async (
   const complaint = await complaintRepository.findComplaintById(complaintId);
 
   if (!complaint) throw new NotFoundError('민원을 찾을 수 없습니다.');
+  const actor = await getTenantActor(requestUserId);
+  if (actor.apartmentId !== complaint.board.apartmentId) throw new NotFoundError('민원을 찾을 수 없습니다.');
   if (complaint.authorId !== requestUserId)
     throw new ForbiddenError('본인이 작성한 민원만 수정할 수 있습니다.');
   if (complaint.status !== 'PENDING')
@@ -149,12 +171,18 @@ export const updateComplaint = async (
 export const updateComplaintStatus = async (
   complaintId: string,
   body: UpdateComplaintStatusBody,
+  requestUserId: string,
 ) => {
-  const complaint = await complaintRepository.findComplaintById(complaintId);
-
-  if (!complaint) throw new NotFoundError('민원을 찾을 수 없습니다.');
-
-  await complaintRepository.updateComplaintStatus(complaintId, body.status);
+  const actor = await getTenantActor(requestUserId);
+  if (!actor.isAdmin) throw new ForbiddenError('관리자만 변경할 수 있습니다.');
+  const complaint = await prisma.$transaction(async tx => {
+    await tx.$queryRaw`SELECT id FROM "Complaint" WHERE id = ${complaintId} FOR UPDATE`;
+    const row = await tx.complaint.findUnique({ where: { id: complaintId }, include: { board: true, incidentLink: true } });
+    if (!row || row.board.apartmentId !== actor.apartmentId) throw new NotFoundError('민원을 찾을 수 없습니다.');
+    if (row.incidentLink) throw new ConflictError('연결된 공동 문제에서 처리 상태를 변경해주세요.');
+    await tx.complaint.update({ where: { id: complaintId }, data: { status: body.status, adminReadAt: new Date() } });
+    return row;
+  });
 
   if (complaint.status !== 'RESOLVED' && body.status === 'RESOLVED') {
     await createComplaintResolvedNotification({
@@ -178,6 +206,9 @@ export const deleteComplaint = async (
 
   if (!complaint) throw new NotFoundError('민원을 찾을 수 없습니다.');
 
+  const actor = await getTenantActor(requestUserId);
+  if (actor.apartmentId !== complaint.board.apartmentId) throw new NotFoundError('민원을 찾을 수 없습니다.');
+  isAdmin = actor.isAdmin;
   const isOwner = complaint.authorId === requestUserId;
 
   if (!isOwner && !isAdmin)

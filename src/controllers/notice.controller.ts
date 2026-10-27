@@ -24,7 +24,7 @@ export const getNotices = async (req: Request, res: Response, next: NextFunction
       ...(search && { search: search as string }),
     };
 
-    const result = await noticeService.getNotices(apartmentId, query);
+    const result = await noticeService.getNotices(apartmentId, query, req.user.id);
     res.status(200).json(result);
   } catch (err) {
     next(err);
@@ -49,7 +49,7 @@ export const createNotice = async (req: Request, res: Response, next: NextFuncti
 export const getNoticeById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const noticeId = req.params["noticeId"] as string;
-    const result = await noticeService.getNoticeById(noticeId);
+    const result = await noticeService.getNoticeById(noticeId, req.user.id);
 
     res.status(200).json(result);
   } catch (err) {
@@ -62,7 +62,7 @@ export const updateNotice = async (req: Request, res: Response, next: NextFuncti
     assert(req.body, UpdateNoticeStruct);
 
     const noticeId = req.params["noticeId"] as string;
-    const result = await noticeService.updateNotice(noticeId, req.body as unknown as UpdateNoticeBody);
+    const result = await noticeService.updateNotice(noticeId, req.body as unknown as UpdateNoticeBody, req.user.id);
 
     res.status(200).json(result);
   } catch (err) {
@@ -74,7 +74,7 @@ export const updateNotice = async (req: Request, res: Response, next: NextFuncti
 export const deleteNotice = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const noticeId = req.params["noticeId"] as string;
-    const result = await noticeService.deleteNotice(noticeId);
+    const result = await noticeService.deleteNotice(noticeId, req.user.id);
 
     res.status(200).json(result);
   } catch (err) {

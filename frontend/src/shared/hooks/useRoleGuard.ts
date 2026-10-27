@@ -13,11 +13,12 @@ export const useRoleGuard = (
   {
     redirectIfNoLogin = '/',
     redirectIfUnauthorized = '/unauthorized',
-    showAlertOnNoLogin = true,
+    showAlertOnNoLogin = false,
   }: RoleGuardOptions = {},
 ) => {
   const router = useRouter();
   const role = useAuthStore((state) => state.user?.role);
+  const isInitialized = useAuthStore((state) => state.isInitialized);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -25,7 +26,7 @@ export const useRoleGuard = (
   }, []);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || !isInitialized) return;
 
     if (!role) {
       if (showAlertOnNoLogin) {
@@ -38,6 +39,7 @@ export const useRoleGuard = (
   }, [
     role,
     hydrated,
+    isInitialized,
     router,
     allowedRoles,
     redirectIfNoLogin,
@@ -45,6 +47,6 @@ export const useRoleGuard = (
     showAlertOnNoLogin,
   ]);
 
-  const isAllowed = hydrated && role && allowedRoles.includes(role);
+  const isAllowed = hydrated && isInitialized && role && allowedRoles.includes(role);
   return { isAllowed };
 };

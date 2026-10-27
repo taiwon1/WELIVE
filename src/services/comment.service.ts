@@ -5,10 +5,13 @@ import {
   CreateCommentBody,
   UpdateCommentBody,
   CommentResponse,
+  BoardType,
 } from "../types/comment.types.js";
 import { NotFoundError, ForbiddenError } from "../errors/errors.js";
 import { Prisma } from "@prisma/client";
 import type { UserRole } from "../types/auth.type.js";
+import { getTenantActor } from "./tenant-access.service.js";
+import prisma from "../lib/prisma.js";
 
 // Prisma 반환 타입 별칭
 type CommentWithAuthor = Prisma.CommentGetPayload<{
@@ -29,19 +32,38 @@ const formatComment = (comment: CommentWithAuthor): CommentResponse => ({
   },
 });
 
+// 댓글의 boardId는 Board가 아니라 공지/민원 글 ID다.
+async function requireVisibleTarget(
+  boardType: BoardType,
+  boardId: string,
+  apartmentId: string,
+  userId: string,
+  isAdmin: boolean,
+) {
+  if (boardType === "NOTICE") {
+    const notice = await noticeRepository.findNoticeById(boardId);
+    if (!notice || notice.board.apartmentId !== apartmentId) throw new NotFoundError("공지사항을 찾을 수 없습니다.");
+    return;
+  }
+  if (boardType === "POLL") {
+    const poll = await prisma.poll.findUnique({ where: { id: boardId }, include: { board: true } });
+    if (!poll || poll.board.apartmentId !== apartmentId) throw new NotFoundError("투표를 찾을 수 없습니다.");
+    return;
+  }
+  const complaint = await complaintRepository.findComplaintById(boardId);
+  if (!complaint || complaint.board.apartmentId !== apartmentId) throw new NotFoundError("민원을 찾을 수 없습니다.");
+  if (!complaint.isPublic && !isAdmin && complaint.authorId !== userId) {
+    throw new ForbiddenError("비공개 민원은 작성자와 관리자만 열람 가능합니다.");
+  }
+}
+
 // 댓글 생성
 const createComment = async (
   authorId: string,
   body: CreateCommentBody,
 ): Promise<{ comment: CommentResponse }> => {
-  // boardId가 실제 엔티티를 가리키는지 검증
-  if (body.boardType === "NOTICE") {
-    const notice = await noticeRepository.findNoticeById(body.boardId);
-    if (!notice) throw new NotFoundError("공지사항을 찾을 수 없습니다.");
-  } else if (body.boardType === "COMPLAINT") {
-    const complaint = await complaintRepository.findComplaintById(body.boardId);
-    if (!complaint) throw new NotFoundError("민원을 찾을 수 없습니다.");
-  }
+  const actor = await getTenantActor(authorId);
+  await requireVisibleTarget(body.boardType, body.boardId, actor.apartmentId, authorId, actor.isAdmin);
 
   const comment = await commentRepository.createComment(authorId, body);
 
@@ -67,6 +89,8 @@ const updateComment = async (
   const comment = await commentRepository.findCommentById(commentId);
 
   if (!comment) throw new NotFoundError("댓글을 찾을 수 없습니다.");
+  const actor = await getTenantActor(requestUserId);
+  await requireVisibleTarget(comment.boardType, comment.boardId, actor.apartmentId, requestUserId, actor.isAdmin);
   if (comment.authorId !== requestUserId)
     throw new ForbiddenError("본인 댓글만 수정할 수 있습니다.");
 
@@ -84,9 +108,10 @@ const deleteComment = async (
 
   if (!comment) throw new NotFoundError("댓글을 찾을 수 없습니다.");
 
+  const actor = await getTenantActor(requestUserId);
+  await requireVisibleTarget(comment.boardType, comment.boardId, actor.apartmentId, requestUserId, actor.isAdmin);
   const isOwner = comment.authorId === requestUserId;
-  const isAdmin =
-    requestUserRole === "ADMIN" || requestUserRole === "SUPER_ADMIN";
+  const isAdmin = actor.isAdmin;
 
   if (!isOwner && !isAdmin)
     throw new ForbiddenError("댓글을 삭제할 권한이 없습니다.");

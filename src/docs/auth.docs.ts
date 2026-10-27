@@ -94,37 +94,6 @@ export const authDocs = {
       },
     },
   },
-  "/api/auth/signup/super-admin": {
-    post: {
-      tags: ["Auth"],
-      summary: "슈퍼 관리자 회원가입",
-      requestBody: {
-        required: true,
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                username: { type: "string" },
-                password: { type: "string" },
-                contact: { type: "string" },
-                name: { type: "string" },
-                email: { type: "string" },
-                role: { type: "string", enum: ["SUPER_ADMIN"] },
-                joinStatus: { type: "string", enum: ["APPROVED"] },
-              },
-            },
-          },
-        },
-      },
-      responses: {
-        201: {
-          description: "슈퍼 관리자 회원가입 성공",
-          content: { "application/json": { schema: userResponseSchema } },
-        },
-      },
-    },
-  },
   "/api/auth/login": {
     post: {
       tags: ["Auth"],

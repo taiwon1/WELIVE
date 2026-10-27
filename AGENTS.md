@@ -1,22 +1,35 @@
 # WELIVE 작업 안내와 포트폴리오 확장 계획
 
-최종 확인: 2026-10-01. 다음 작업은 이 파일부터 읽는다. 코드와 설정이 바뀌면 해당 항목을 갱신한다. 이 문서는 재탐색을 줄이기 위한 기준이며, 설치·실행 성공을 보증하지 않는다.
+최종 확인: 2026-10-27. 다음 작업은 이 파일부터 읽는다. 코드와 설정이 바뀌면 해당 항목을 갱신한다. 이 문서는 재탐색을 줄이기 위한 기준이며, 설치·실행 성공을 보증하지 않는다. 커밋과 PR 제목·본문은 한국어로 직관적으로 작성한다.
+
+## 2026-10-27 공개 배포 상태 (이 항목이 과거 배포 계획보다 우선)
+
+- 사용자 생성 AWS EC2 `i-0214bf7486f75e867`: 시드니 `ap-southeast-2`, Ubuntu 24.04 ARM64, t4g.small, 암호화 20 GiB gp3. 2026-10-27 실행 중. 공인 IP `3.107.54.69`는 **자동 할당**으로 재시작/중지 후 바뀔 수 있다. 현재 주소: https://3-107-54-69.sslip.io/ . HTTP는 HTTPS로 이동한다.
+- Caddy/Next/Express/PostgreSQL 16/Redis를 `compose.portfolio.yaml`로 서버에서 기동했다. 26개 마이그레이션 적용, 공개 화면·`/api/ping` HTTP 200, 익명 업로드·공개 최고관리자 가입 HTTP 401 확인. 초기 최고관리자와 데모 관리자·주민 2명은 **가상 정보**로 생성했다.
+- 2026-10-28 주민 공지 상세에서 API 원시 ISO 시각이 보이는 문제를 기존 `formatDateToKST` 적용으로 수정했다. 프런트 로컬 빌드와 ARM64 재빌드, EC2 프런트 컨테이너 교체 후 healthy 및 HTTPS 200 확인. 주민 브라우저 새로고침 후 표시의 육안 확인은 남았다.
+- 데모 흐름: 비공개 민원 2건 → 공동 문제 1건 연결 → 처리중/완료 상태 동기화 → 동일 요청 멱등 재시도 → 관리자 공지 등록 → 주민 공지 목록 확인. 다른 주민 비공개 민원 접근은 HTTP 403. `INCIDENT_UPDATED` 알림 4건(주민 2명 × 상태 2회), Outbox 8건 모두 PROCESSED 확인. API 시나리오이며 브라우저 로그인 후 화면 조작과 SSE 장시간 재연결은 아직 수동 점검이 필요하다.
+- 서버 백업을 `scripts/portfolio-backup.sh`로 만들고 `scripts/portfolio-verify-backup.sh`로 별도 DB에 복원해 마이그레이션 26개·사용자 4명·공동 문제 1건 확인. 백업은 Windows `C:\Users\taewon\projects\welive\backups`의 접근 제한 폴더에도 저장. 복원용 임시 DB는 스크립트가 제거한다.
+- SSH 개인키는 Windows `C:\Users\taewon\projects\welive\welive-portfolio-key-chrome.pem`에만 있다. 서버/저장소에 올리지 않는다. 운영자와 데모 계정 비밀번호는 같은 Windows 폴더의 `WELIVE-portfolio-admin.txt`, `WELIVE-portfolio-demo-accounts.txt`에 접근 제한하여 보관했다. 채팅·Git에 비밀번호를 쓰지 않는다.
+- 2026-10-28 AWS Billing에서 크레딧 US$100 잔액과 무료 플랜 남은 178일을 확인했다(집계 지연 가능). `WELIVE-portfolio-monthly-5` 월 US$5 예산은 생성했으나 이메일 인증 발송이 `notifications-contacts:CreateEmailContact/SendActivationCode/ListEmailContacts` 권한 부족으로 거절됐다. 수신자 상태 Inactive, 알림 이메일은 현재 작동하지 않는다. 예산은 비용 상한이 아니다.
+- 무료 플랜·US$100 크레딧 상태에서 서버를 생성했다. EC2 콘솔 Linux 시간당 US$0.0212(730시간 약 US$15.48), 공인 IPv4·디스크 등 별도. 월 지출 상한으로 해석하지 않는다. 유료 플랜 전환은 하지 않았다. 사용하지 않을 때 중지하면 컴퓨트 요금은 멈추지만 IP 변경과 EBS 유지 비용을 고려한다.
+- GitHub PR #2 `codex/deployment-readiness`는 열려 있고 아직 main에 병합하지 않았다. 커밋 `b098b73`의 GitHub CI는 성공했다. 최종 배포 내용·복원 스크립트 문서 커밋/푸시와 PR 병합 여부 확인이 남았다. 상세 절차는 `docs/deployment-portfolio.md`.
+- 로컬 Docker Desktop의 `dockerInference` 소켓 오류는 런타임 폴더 두 개만 보존 이름으로 옮기고 복구했다. ARM64 이미지 3개를 로컬에서 빌드해 AWS에 전송했다. 테스트 전용 DB의 20개 묶음/260개 통과, 운영 의존성 audit 0건.
 
 ## 프로젝트 목적과 범위
 
 - 부트캠프 팀 프로젝트인 아파트 입주민·관리 통합 플랫폼의 백엔드. 취업 포트폴리오용 개인 확장이 목적이다.
 - README 기준 박태원 담당: 팀장, 민원, 공지사항, 댓글, 이벤트. 팀 개발 성과와 개인 확장 성과를 구분해 기록한다.
 - 제공받은 Next.js 프런트엔드를 `frontend/`에 반입하고 백엔드와 같은 출처의 `/api`로 연결했다.
-- 공동 문제(Incident) 수동 연결·처리 이력·작성자별 중복 방지 알림의 백엔드와 관리자·주민 프런트 1차 구현을 완료했다. 아래 초기 계획 중 AI 추천·공지 연계는 아직 미구현이다.
+- 공동 문제(Incident) 수동 연결·처리 이력·작성자별 중복 방지 알림, 연결 민원 상태 동기화, 관리자 미확인·미처리 표시와 완료 공지 초안을 구현했다. 제목은 규칙 기반으로 제안한다. AI 추천과 공동 문제·공지의 영구적인 DB 연결은 아직 없다.
 
 ## 확인된 환경
 
 - 작업 경로: `/home/taewon/projects/WELIVE`, Linux/WSL 경로 체계, bash.
-- 브랜치 main에 공동 문제, 프런트 도입, 배포 준비 변경이 아직 커밋되지 않은 상태다. 브랜치와 변경 상태는 매 작업 시작 시 간단히 확인한다.
-- 설치 도구: Node v24.13.0, npm 11.6.2. Docker 실행 파일은 Windows Docker 경로에 있으나 2026-10-01 확인 당시 Docker Desktop/WSL Integration이 꺼져 있어 이미지와 Compose 실행은 검증하지 못했다.
+- 공동 문제·프런트·배포 준비 PR #1은 개인 저장소 `main`에 병합됐다. 2026-10-23 현재 브랜치는 `codex/deployment-readiness`이며 `codex/incident-workflow`의 후속 작업이다. 브랜치와 변경 상태는 매 작업 시작 시 간단히 확인한다.
+- 설치 도구: Node v24.13.0, npm 11.6.2. Docker Desktop/Ubuntu WSL 연결은 2026-10-02 동작을 확인했다.
 - 백엔드와 프런트 node_modules가 설치되어 있다. .env는 만들지 않았다. psql과 redis-cli는 PATH에서 발견되지 않음.
 - 기본 셸 샌드박스는 bwrap 미설치로 실행 실패했다. 이 세션의 파일 조회·문서 작성은 승인된 대체 실행을 사용했다. 이는 호스트 상태이므로 다음 세션에서도 같다고 단정하지 않는다.
-- 임시 PostgreSQL 18.4에서 마이그레이션과 관련 통합 테스트를 실행했다. 실제 브라우저·Docker·PostgreSQL 16 CI는 아직 검증하지 않았다.
+- 임시 PostgreSQL 18.4에서 마이그레이션과 관련 통합 테스트를 실행했다. 로컬 Docker의 PostgreSQL 16에 마이그레이션 25개를 적용하고 전체 서비스의 건강 상태와 HTTP 응답을 확인했다. 실제 브라우저 사용 흐름·GitHub CI 결과는 별도 확인이 필요하다.
 
 ## 기술과 탐색 지도
 
@@ -55,7 +68,7 @@
 4. `npx prisma generate`, 대상 DB가 확실한 상태에서 `npx prisma migrate deploy`로 기존 마이그레이션 적용. 새 스키마 변경을 만들 때만 개발 전용 DB에서 `npx prisma migrate dev --name <변경명>`.
 5. `npm run dev`로 실행. 기본 API 포트 4000. `/health`는 프로세스 응답만 확인하며 DB/Redis 준비 상태를 보증하지 않는다.
 6. 변경에 맞춰 `npm run typecheck`, `npm run build`, 필요한 도메인 테스트를 실행한다. 예: `npm test -- --testPathPattern=complaint`.
-7. 전체 검증은 `npm run test:ci`. tests 일부는 deleteMany로 테이블 데이터를 삭제하므로 테스트 전용 DB에서만 실행한다. tests/setup.ts는 dotenv를 읽으며 DB URL을 테스트 전용으로 강제하지 않는다.
+7. 전체 검증은 `npm run test:ci`. tests 일부는 deleteMany로 테이블 데이터를 삭제하므로 테스트 전용 DB에서만 실행한다. tests/setup.ts는 dotenv를 읽고 DB 이름이 testdb 또는 *_test인지 확인한다. DB 이름 검증만으로 대상 서버까지 보증하지는 않는다.
 
 필요 설정:
 
@@ -161,7 +174,7 @@ README의 ‘모든 테스트 mock 없음’ 표현과 달리 알림·큐 테스
 
 - `docs/incidents.md`에 설계 결정, API 요청 예시, 상태 전이, 후속 범위와 검증 한계를 기록했다. `src/docs/incident.docs.ts`가 Swagger에 등록되어 있다.
 - 신규 API `/api/incidents`: 생성/목록/상세, 민원 연결·해제, 처리 업데이트/이력 페이지 조회. 신규 Prisma 모델 Incident/IncidentComplaint/IncidentUpdate 및 마이그레이션 `20261001060000_add_incidents`.
-- 민원 하나는 현재 공동 문제 하나에만 연결된다. 원본 민원의 상태·공개 여부는 바꾸지 않는다. 공동 문제 상태는 PENDING→IN_PROGRESS→RESOLVED, 재개 RESOLVED→IN_PROGRESS를 지원한다.
+- 민원 하나는 현재 공동 문제 하나에만 연결된다. 최초 구현에서는 상태가 독립적이었으나 2026-10-07부터 연결 중에는 공동 문제 상태를 원본 민원에도 반영한다. 원문·공개 여부는 보존한다. 공동 문제 상태는 PENDING→IN_PROGRESS→RESOLVED, 재개 RESOLVED→IN_PROGRESS를 지원한다.
 - 새 API는 매 요청마다 현재 DB의 역할·승인·활성·단지·거주 상태를 확인한다. ADMIN만 관리하며 USER는 자기 민원이 연결된 문제만 조회한다. SUPER_ADMIN의 전 단지 조회는 제공하지 않는다. 이 보강이 기존 모든 API의 권한 문제까지 해결한 것은 아니다.
 - 주민 응답에는 자신의 complaintIds와 공유용 진행 이력만 포함한다. 다른 주민의 민원 원문·ID·인원수는 제외한다. 공동 문제 제목/설명/업데이트는 관리자가 관련 주민에게 공개할 내용으로 작성해야 한다.
 - 동일 requestId/본문은 재시도해도 같은 updateId/version 반환. 같은 ID의 다른 본문 또는 오래된 expectedVersion은 409. 연결과 업데이트는 공동 문제 행 잠금을 공유한다.
@@ -184,3 +197,49 @@ README의 ‘모든 테스트 mock 없음’ 표현과 달리 알림·큐 테스
 - AWS 생성·GitHub 변수·EC2 .env·첫 배포 절차는 `docs/deployment.md`. 다음 사용자 작업은 Docker Desktop을 켜고 Ubuntu WSL Integration을 활성화하는 것, 이후 개인 AWS 계정/도메인/예산을 준비하는 것이다.
 - 검증: 백엔드 typecheck/build 통과. 프런트 build 통과(마지막 변경 후 재검증 필요), lint는 기존 소스의 React effect 규칙을 호환 설정으로 제외하고 경고만 남겼다. 임시 PostgreSQL에서 25개 마이그레이션, 공동 문제 19개, 민원 27개, 사용자 9개, 알림·큐 36개 통과. Docker 엔진 미실행으로 Dockerfile/Compose 실제 기동은 미검증이다.
 - 백엔드 npm audit 잔여 high 4건은 devDependency인 Prisma CLI 하위 deepmerge-ts/mysql2 권고다. 강제 수정은 Prisma 7을 6으로 내리므로 적용하지 않았다. 운영 runner는 `npm ci --omit=dev`로 이 도구를 포함하지 않는다. migrator는 신뢰된 마이그레이션 실행 때만 일회성으로 사용한다.
+
+## 2026-10-02 로컬 실행 확인 및 다음 단계
+
+- 개인 저장소 PR #1은 `main`에 병합됐다. 로컬 후속 수정은 `codex/fix-initial-session` 브랜치에서 진행한다.
+- `docker compose -f compose.local.yaml build` 성공. `--profile tools run --rm migration`으로 새 로컬 PostgreSQL 16에 마이그레이션 25개 적용 성공. `up -d` 후 proxy/frontend/backend/postgres/redis 실행 및 각 healthcheck 통과.
+- `http://localhost:3000/`는 200, 같은 출처 `/api/ping`은 200, 공개 단지 목록은 200과 빈 목록, 미로그인 `/api/users/me`는 예상대로 401, 백엔드 `/health`는 200이었다. 실제 브라우저 로그인·민원·알림 흐름은 아직 수동 검증이 필요하다. 새 DB에는 사용자와 단지 데이터가 없다.
+- 익명 사용자의 `/users/me` 401 이후 refresh 실패 시 `/`로 다시 이동해 로그인 화면이 반복 새로고침될 수 있는 오류를 후속 브랜치에서 수정했다. 프런트 로컬 빌드와 Docker 이미지 재빌드를 통과했고, 새 프런트 컨테이너가 healthy다.
+- Docker 빌드의 백엔드 `npm ci --omit=dev` 단계에서 high 4건이 여전히 출력됐다. 이전 문서의 '런타임에는 포함되지 않는다'는 설명은 패키지 경로를 재확인하기 전까지 확정하지 않는다.
+- 사용자가 다음에 확인할 일은 `http://localhost:3000` 로그인 화면을 열어 초기 화면이 안정적으로 표시되는지 확인하는 것이다. 이후 테스트용 계정·단지 생성과 관리자/주민 연결 흐름을 검증한다. AWS 배포 전 기존 공개 최고관리자 가입 경로 등 권한 문제를 해결해야 한다.
+
+## 2026-10-07 로컬 데모 계정
+
+- 로컬 Compose DB가 비어 있음을 확인한 뒤 `WELIVE 데모 단지`(승인됨), 관리자 `demo_admin`, 주민 `demo_resident1`(101동 101호)·`demo_resident2`(101동 102호), 공지/민원/투표 게시판을 생성했다. 데모 비밀번호는 채팅에서만 전달하고 저장소에는 기록하지 않는다. 실제 계정과 무관한 로컬 데이터다.
+- 세 계정 모두 `/api/auth/login`, `/api/users/me`, `/api/incidents` 요청에 성공했다. 아직 민원과 공동 문제는 없으며 브라우저에서의 화면 조작은 미검증이다.
+- 다음 수동 확인: 주민 둘이 같은 문제의 민원을 각각 등록 → 관리자가 공동 문제를 만들어 연결 → 진행 이력 작성 → 두 주민의 알림과 각자에게 보이는 내용 확인. 같은 주민이 민원 두 건을 쓰면 다음 업데이트에서 그 주민에게 알림이 한 번만 생기는지도 확인할 수 있다.
+
+## 2026-10-07 공동 문제 업무 흐름 개선 및 최종 검증
+
+- 상세 기록은 `docs/incident-workflow-qa.md`, 상태·공개 범위 정책은 `docs/incidents.md`를 참고한다. 아래 내용이 위의 과거 구현 기록보다 우선한다.
+- 선택한 민원 제목의 빈도 기반 키워드로 수정 가능한 제목을 제안한다. 생성 후 처리 입력란으로 이동한다. AI나 자동 병합 기능은 아니다.
+- 공동 문제 상태 변경은 연결 민원 상태·공개 이력·작성자별 알림·Outbox와 함께 커밋된다. 연결된 민원의 개별 상태 변경은 거절한다. 해제하면 마지막 상태를 유지한다. 처음 묶을 때 처리 중 민원이 있으면 공동 문제도 처리 중으로 시작한다.
+- 관리자 상세 확인 시각을 `Complaint.adminReadAt`에 기록한다. 미확인/미처리 필터, 처리 상태 글자, 읽지 않은 민원 강조를 제공한다. 주민이 수정하면 다시 미확인이 된다. 과거 조회수를 관리자 읽음으로 추정하지 않는다.
+- 완료 저장 → 공지 작성 여부 확인 → 공개 설명·완료 이력의 초안 → 관리자의 최종 등록 때 전체 주민에게 게시한다. 완료만으로 공지를 생성하지 않는다. 원본 비공개 민원 내용은 초안에 복사하지 않는다. 공지 영구 연결·발행 이력·중복 발행 방지는 후속 범위다.
+- 마이그레이션 `20261007090000_complaint_admin_read_and_incident_status`를 로컬에 적용했다(총 26개). 기존 연결 민원도 공동 문제 상태로 맞춘다. 운영에는 적용하지 않았다.
+- 분리된 PostgreSQL 16에서 민원 27개·공동 문제 24개·제목 제안 3개, 총 54개 테스트 통과. 백엔드 typecheck/build, 프런트 타입 검사/lint/build 및 양쪽 Docker 이미지 빌드 통과. 최종 컨테이너에 반영했다.
+- 임시 Playwright Chromium으로 관리자 로그인, 미확인/검색, 수동 제목 유지, 생성 후 이동, 개별 민원 상태 갱신, 공동 상태 반영, 저장 응답 유실 후 멱등 재시도, 한국 시간 유지, 완료 팝업 양쪽 선택, 공지 등록 실패/재시도, 주민별 정보 격리를 검증했다. 실제 고령 사용자 사용성 조사와 서비스 전체 화면 검증은 아니다.
+- 브라우저 검증 파일은 `/tmp/welive-ui-check`에만 있다. 테스트 데이터는 고유 ID·본문을 확인해 정리했다. 기존 민원 3건·공동 문제 1건을 보존했고 연결 상태 불일치는 0건이다. 검증 전용 `welive-workflow-test` 컨테이너는 제거했다. 로컬 데모 Compose 서비스는 계속 실행 중이다.
+- 이번 환경의 기본 실행 도구는 프로세스 생성 실패로 동작하지 않았다. 승인된 `wsl.exe -d Ubuntu -- bash -lc` 실행을 사용했다. Windows 컴퓨터 조작 도구도 sandboxCwd 오류로 사용할 수 없어 임시 Playwright로 검증했다. 다음 세션에서 같은 오류라고 단정하지 않는다.
+- 다음 단계: 변경 브랜치 PR 검토·병합 후 실제 사용자 관점에서 민원 처리 흐름 확인. AWS 공개 배포 전 기존 최고관리자 가입 경로 등 권한 보강 항목은 여전히 남아 있다.
+
+## 2026-10-23 배포 전 점검과 사용자 조건
+
+- 사용자는 개인 AWS 계정만 있으며 서버를 배포한 경험이 없다. 목적은 포트폴리오·배포 경험이고 월비용 최소화를 원한다. 도메인·무료 크레딧 적용 여부·월 지출 확정 상한은 아직 미확인이다.
+- 첫 후보는 Lightsail 2GB Linux/공인 IPv4 서버 한 대(공식 기본요금 월 USD 12, 세금·추가 사용료 별도). 계정 무료 혜택과 가격을 사용자와 확인한 뒤 생성한다. 기존 ALB·RDS 구성은 확장용으로 보류한다.
+- 작업 브랜치는 `codex/deployment-readiness`. 원격 `main`은 여전히 `bc3146e`로, 앞선 세션·공동 문제 개선 커밋도 아직 병합되지 않았다(2026-10-23 fetch 확인). 이번 PR 범위에 포함된다.
+- `docs/predeployment-qa.md`에 수정·검증·남은 범위, `docs/deployment-portfolio.md`에 초보자용 진행표를 기록했다.
+- 입주민 토큰 갱신에 현재 거주 단지를 유지하고 비활성·퇴거·거절 계정의 로그인/갱신을 거절한다. 프런트 권한 이동은 세션 초기화 후 실행한다.
+- 공개 최고관리자 가입 경로와 Swagger 항목을 제거했다. `src/cli/bootstrap-admin.ts` → `dist/cli/bootstrap-admin.js`로 서버 초기 계정을 한 번 생성한다. JSON은 stdin으로 받으며 비밀번호를 인자·로그에 남기지 않는다. PostgreSQL advisory lock과 기존 최고관리자 확인을 사용한다.
+- 민원 편집 공개 범위 표시·연속 제출·오류 안내·한국어/날짜·주민 검색 버튼·로그아웃 팝업을 개선했다. 공지 날짜 Z 중복 오류와 좁은 화면 표 잘림을 수정했다.
+- 테스트 setup에서 DB 이름 testdb 또는 *_test만 허용한다. 이 규칙은 보조 장치이며 여전히 전용 DB에서만 테스트한다.
+- 최종 전체 테스트 18개 스위트 249개 통과. 백엔드 타입/빌드, 프런트 lint/빌드, Docker 이미지 빌드 통과 및 로컬 서비스 반영. 초기 관리자 CLI도 빈 DB에서 첫 생성/재실행 거절 검증.
+- 실제 IAB 브라우저에서 주민 작성/비공개 수정, 관리자 공동 처리/공지 발행, 주민 완료 이력·정상 날짜·로그아웃을 검증했다. 테스트 글과 DB 알림을 정리하고 기존 데이터는 보존했다.
+- 공개 배포 전 전체 기존 API의 단지/대상 권한 보강, 실제 S3, HTTPS, 백업/복구 검증이 남아 있다. AWS 자원 생성·운영 배포를 수행한 상태가 아니다.
+- 다음 사용자 단계는 Billing에서 현재 비용·무료 혜택 확인과 Budgets 비용 알림 설정이다. 알림은 자동 과금 차단이 아니다. AWS 화면의 Agent Toolkit은 필수가 아니다.
+
+- 2026-10-23 검증 전용 PostgreSQL/Redis 컨테이너를 제거했다. 테스트가 일반 DB 이름을 거절하는 것도 실제 실행으로 확인했다. 로컬 데모 서비스는 계속 실행 중이다.
