@@ -2,13 +2,16 @@
 
 최종 확인: 2026-10-27. 다음 작업은 이 파일부터 읽는다. 코드와 설정이 바뀌면 해당 항목을 갱신한다. 이 문서는 재탐색을 줄이기 위한 기준이며, 설치·실행 성공을 보증하지 않는다. 커밋과 PR 제목·본문은 한국어로 직관적으로 작성한다.
 
-## 2026-10-25 최신 배포 상태
+## 2026-10-27 공개 배포 상태 (이 항목이 과거 배포 계획보다 우선)
 
-- AWS 로그인 콘솔 확인: 무료 플랜, 크레딧 US$100, 남은 약 180일. 무료 플랜에서 Lightsail과 서울 리전 EC2 접근이 거부되므로 이전 Lightsail/서울 계획을 적용하지 않는다. 시드니 EC2 t4g.small ARM64가 현재 후보이며 콘솔 Linux 요금은 시간당 US$0.0212다. 아직 AWS 자원은 생성하지 않았다.
-- 로컬 단일 서버 구성: `compose.portfolio.yaml`, `caddy/Caddyfile`, `.env.portfolio.example`. Caddy/Next/Express/PostgreSQL/Redis와 로컬 이미지 볼륨을 사용한다. 실제 운영 환경 파일과 SSH 키는 Git에 넣지 않는다.
-- 단지 간 민원·공지·댓글·투표·일정·주민 승인/가입 권한을 추가로 보강했다. 테스트 전용 DB에서 20개 묶음, 260개 통과(2026-10-27 보안 잠금 파일 갱신 후 재검증). 로컬 HTTPS 경로와 26개 마이그레이션은 통과했다. 공인 HTTPS와 AWS 기동은 미검증이다.
-- 기존 `.github/workflows/deploy.yaml`의 main 자동 EC2/ECR 배포 트리거를 제거했다. 이전 배포 문서의 ALB/RDS 계획은 이번 저비용 배포에 적용하지 않는다.
-- 상세 배포 진행 상황과 비용/담당은 `docs/deployment-portfolio.md`를 따른다. ARM64 최종 이미지 3개와 전송 묶음 빌드·아키텍처·마이그레이션 검증을 완료했다. PR·서버 생성/연결이 남았다. 백업 스크립트는 로컬에서 실행하고 SQL을 별도 DB로 복원해 26개 마이그레이션을 확인했다.
+- 사용자 생성 AWS EC2 `i-0214bf7486f75e867`: 시드니 `ap-southeast-2`, Ubuntu 24.04 ARM64, t4g.small, 암호화 20 GiB gp3. 2026-10-27 실행 중. 공인 IP `3.107.54.69`는 **자동 할당**으로 재시작/중지 후 바뀔 수 있다. 현재 주소: https://3-107-54-69.sslip.io/ . HTTP는 HTTPS로 이동한다.
+- Caddy/Next/Express/PostgreSQL 16/Redis를 `compose.portfolio.yaml`로 서버에서 기동했다. 26개 마이그레이션 적용, 공개 화면·`/api/ping` HTTP 200, 익명 업로드·공개 최고관리자 가입 HTTP 401 확인. 초기 최고관리자와 데모 관리자·주민 2명은 **가상 정보**로 생성했다.
+- 데모 흐름: 비공개 민원 2건 → 공동 문제 1건 연결 → 처리중/완료 상태 동기화 → 동일 요청 멱등 재시도 → 관리자 공지 등록 → 주민 공지 목록 확인. 다른 주민 비공개 민원 접근은 HTTP 403. `INCIDENT_UPDATED` 알림 4건(주민 2명 × 상태 2회), Outbox 8건 모두 PROCESSED 확인. API 시나리오이며 브라우저 로그인 후 화면 조작과 SSE 장시간 재연결은 아직 수동 점검이 필요하다.
+- 서버 백업을 `scripts/portfolio-backup.sh`로 만들고 `scripts/portfolio-verify-backup.sh`로 별도 DB에 복원해 마이그레이션 26개·사용자 4명·공동 문제 1건 확인. 백업은 Windows `C:\Users\taewon\projects\welive\backups`의 접근 제한 폴더에도 저장. 복원용 임시 DB는 스크립트가 제거한다.
+- SSH 개인키는 Windows `C:\Users\taewon\projects\welive\welive-portfolio-key-chrome.pem`에만 있다. 서버/저장소에 올리지 않는다. 운영자와 데모 계정 비밀번호는 같은 Windows 폴더의 `WELIVE-portfolio-admin.txt`, `WELIVE-portfolio-demo-accounts.txt`에 접근 제한하여 보관했다. 채팅·Git에 비밀번호를 쓰지 않는다.
+- 무료 플랜·US$100 크레딧 상태에서 서버를 생성했다. EC2 콘솔 Linux 시간당 US$0.0212(730시간 약 US$15.48), 공인 IPv4·디스크 등 별도. 월 지출 상한으로 해석하지 않는다. 유료 플랜 전환은 하지 않았다. 사용하지 않을 때 중지하면 컴퓨트 요금은 멈추지만 IP 변경과 EBS 유지 비용을 고려한다.
+- GitHub PR #2 `codex/deployment-readiness`는 열려 있고 아직 main에 병합하지 않았다. 커밋 `b098b73`의 GitHub CI는 성공했다. 최종 배포 내용·복원 스크립트 문서 커밋/푸시와 PR 병합 여부 확인이 남았다. 상세 절차는 `docs/deployment-portfolio.md`.
+- 로컬 Docker Desktop의 `dockerInference` 소켓 오류는 런타임 폴더 두 개만 보존 이름으로 옮기고 복구했다. ARM64 이미지 3개를 로컬에서 빌드해 AWS에 전송했다. 테스트 전용 DB의 20개 묶음/260개 통과, 운영 의존성 audit 0건.
 
 ## 프로젝트 목적과 범위
 
