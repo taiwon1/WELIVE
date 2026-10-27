@@ -7,6 +7,7 @@
 - [데모 사이트](https://3-107-54-69.sslip.io/)가 시드니 EC2 `i-0214bf7486f75e867`에서 실행 중이다. HTTPS 화면과 `/api/ping`은 200, HTTP는 308로 HTTPS 이동. 인스턴스의 `3.107.54.69`는 자동 할당 주소이며, **중지 후 재시작하면 바뀔 수 있다**. Elastic IP와 유료 도메인은 연결하지 않았다. IP가 바뀌면 `SITE_HOST` 등 환경값과 Caddy 인증서 주소를 갱신해야 한다.
 - 서버 구성: Ubuntu 24.04 ARM64, t4g.small, 암호화 20 GiB gp3, 공식 Docker Engine/Compose, 1 GiB swap, Caddy/Next/Express/PostgreSQL/Redis. 26개 마이그레이션을 적용했다. SSH는 생성 당시 사용자 공인 IP로만, HTTP 80·HTTPS 443은 공개한다.
 - 초기 운영자 `portfolio_root`, 데모 관리자 `demo_admin`, 주민 `demo_resident1`/`demo_resident2`는 가상 정보다. 비밀번호와 SSH 개인키는 `C:\Users\taewon\projects\welive`의 접근 제한 파일에만 보관한다. 주민 브라우저 시연 시 해당 파일을 로컬에서 확인한다.
+- 2026-10-28 주민 공지 상세의 원시 ISO 날짜를 한국 시간 형식으로 수정해 프런트 ARM64 이미지 재빌드·교체 완료. 프런트 컨테이너 healthy, 공개 첫 화면·API 200 확인. 브라우저 새로고침 후 날짜 표시는 사용자에게 최종 확인을 요청했다.
 - 실제 HTTPS API에서 관리자 가입/승인, 주민 2명 가입/승인/로그인, 게시판 3종, 민원 2건 연결, 공동 문제 처리중/완료 동기화, 동일 요청 멱등성, 주민별 비공개 민원 격리(HTTP 403), 관리자 최종 공지 발행 및 주민 목록 표시를 확인했다. 완료 상태 저장만으로 공지가 자동 발행되지 않는 것도 확인했다. 알림 DB에서 공동 문제 업데이트 알림 4건과 처리 완료 Outbox 8건을 확인했다. 브라우저 로그인 뒤 전체 화면과 SSE 장시간 동작은 별도 수동 점검이 필요하다.
 - 서버 백업을 생성하고 별도 DB로 복원해 마이그레이션 26개, 사용자 4명, 공동 문제 1건을 확인했다. 서버 외부 사본: `C:\Users\taewon\projects\welive\backups`. 백업은 자격 증명 해시를 포함하므로 비공개로 보관한다. 새 데이터가 쌓이면 정기 백업이 필요하다.
 - PR #2 `codex/deployment-readiness`는 열려 있다. `b098b73` CI의 테스트/빌드는 성공했다. 마지막 문서·복원 스크립트 변경의 CI 확인과 PR 병합은 남았다.

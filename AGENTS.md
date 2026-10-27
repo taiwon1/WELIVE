@@ -6,6 +6,7 @@
 
 - 사용자 생성 AWS EC2 `i-0214bf7486f75e867`: 시드니 `ap-southeast-2`, Ubuntu 24.04 ARM64, t4g.small, 암호화 20 GiB gp3. 2026-10-27 실행 중. 공인 IP `3.107.54.69`는 **자동 할당**으로 재시작/중지 후 바뀔 수 있다. 현재 주소: https://3-107-54-69.sslip.io/ . HTTP는 HTTPS로 이동한다.
 - Caddy/Next/Express/PostgreSQL 16/Redis를 `compose.portfolio.yaml`로 서버에서 기동했다. 26개 마이그레이션 적용, 공개 화면·`/api/ping` HTTP 200, 익명 업로드·공개 최고관리자 가입 HTTP 401 확인. 초기 최고관리자와 데모 관리자·주민 2명은 **가상 정보**로 생성했다.
+- 2026-10-28 주민 공지 상세에서 API 원시 ISO 시각이 보이는 문제를 기존 `formatDateToKST` 적용으로 수정했다. 프런트 로컬 빌드와 ARM64 재빌드, EC2 프런트 컨테이너 교체 후 healthy 및 HTTPS 200 확인. 주민 브라우저 새로고침 후 표시의 육안 확인은 남았다.
 - 데모 흐름: 비공개 민원 2건 → 공동 문제 1건 연결 → 처리중/완료 상태 동기화 → 동일 요청 멱등 재시도 → 관리자 공지 등록 → 주민 공지 목록 확인. 다른 주민 비공개 민원 접근은 HTTP 403. `INCIDENT_UPDATED` 알림 4건(주민 2명 × 상태 2회), Outbox 8건 모두 PROCESSED 확인. API 시나리오이며 브라우저 로그인 후 화면 조작과 SSE 장시간 재연결은 아직 수동 점검이 필요하다.
 - 서버 백업을 `scripts/portfolio-backup.sh`로 만들고 `scripts/portfolio-verify-backup.sh`로 별도 DB에 복원해 마이그레이션 26개·사용자 4명·공동 문제 1건 확인. 백업은 Windows `C:\Users\taewon\projects\welive\backups`의 접근 제한 폴더에도 저장. 복원용 임시 DB는 스크립트가 제거한다.
 - SSH 개인키는 Windows `C:\Users\taewon\projects\welive\welive-portfolio-key-chrome.pem`에만 있다. 서버/저장소에 올리지 않는다. 운영자와 데모 계정 비밀번호는 같은 Windows 폴더의 `WELIVE-portfolio-admin.txt`, `WELIVE-portfolio-demo-accounts.txt`에 접근 제한하여 보관했다. 채팅·Git에 비밀번호를 쓰지 않는다.

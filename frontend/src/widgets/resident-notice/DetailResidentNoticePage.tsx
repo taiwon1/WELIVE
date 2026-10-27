@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { fetchResidentNoticeDetail } from '@/entities/notice/api/noticeApi';
 import CommentSection from '@/shared/comments/ui/CommentSection';
 import { BoardType } from '@/shared/comments/api/comment.api';
+import { formatDateToKST } from '@/shared/lib/formatDateToKST';
 
 type NoticeDetail = {
   title: string;
@@ -67,7 +68,7 @@ export default function DetailResidentNoticePage() {
               {CATEGORY_LABEL_MAP[notice.category as keyof typeof CATEGORY_LABEL_MAP]}
             </li>
             <li className='text-gray-200'>|</li>
-            <li className='text-gray-500'>{notice.createdAt}</li>
+            <li className='text-gray-500'>{formatDateToKST(notice.createdAt)}</li>
             <li className='text-gray-200'>|</li>
             <li>조회수&nbsp;&nbsp;{notice.viewsCount}</li>
             <li className='text-gray-200'>|</li>
