@@ -2,6 +2,7 @@ import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { s3 } from "../lib/s3";
 import { randomUUID } from "crypto";
 import path from "path";
+import { writeLocalAsset, deleteLocalAsset } from "./local-assets.service";
 
 export class UnsupportedFileTypeError extends Error {
   statusCode = 400;
@@ -36,6 +37,7 @@ export class StorageService {
   private readonly region = process.env.AWS_REGION;
 
   constructor() {
+    if (process.env.UPLOAD_STORAGE === 'local') return;
     if (!this.bucket) {
       throw new Error("S3_BUCKET is not set");
     }
@@ -49,6 +51,9 @@ export class StorageService {
     this.validateFile(file);
 
     const ext = this.getSafeExtension(file);
+    if (process.env.UPLOAD_STORAGE === 'local') {
+      return (await writeLocalAsset(file, folder, ext)).url;
+    }
     const key = `${folder}/${Date.now()}-${randomUUID()}${ext}`;
 
     await s3.send(
@@ -68,6 +73,10 @@ export class StorageService {
 
   async deleteFile(fileUrl: string): Promise<void> {
     try {
+      if (process.env.UPLOAD_STORAGE === 'local') {
+        await deleteLocalAsset(fileUrl);
+        return;
+      }
       const key = this.extractKeyFromUrl(fileUrl);
 
       if (!key) {
@@ -81,7 +90,7 @@ export class StorageService {
         }),
       );
     } catch (error) {
-      console.error("S3 파일 삭제 실패:", error);
+      console.error("이미지 파일 삭제 실패:", error);
     }
   }
 

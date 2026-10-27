@@ -46,8 +46,7 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
-RUN chown -R node:node /app
-
+# Runtime files are read-only; the upload volume is owned by node via assets-init.
 USER node
 
 EXPOSE 4000

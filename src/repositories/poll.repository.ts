@@ -3,10 +3,11 @@ import { getSkip } from "../utils/pagination.util";
 import type { PollListQuery, PollOptionInput } from "../types/poll.types";
 
 // 투표 목록 조회
-export const findPolls = async (query: PollListQuery & { page: number; limit: number }) => {
+export const findPolls = async (query: PollListQuery & { page: number; limit: number }, apartmentId?: string) => {
   const { status, buildingPermission, keyword, page, limit } = query;
 
   const where = {
+    ...(apartmentId && { board: { apartmentId } }),
     ...(status && { status }),
     ...(buildingPermission !== undefined && { buildingPermission }),
     ...(keyword && {

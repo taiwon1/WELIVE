@@ -42,3 +42,19 @@
 기존 ALB·RDS 배포 문서보다 `docs/deployment-portfolio.md`의 저비용 첫 배포 순서를 우선한다.
 
 - 2026-10-23 검증 전용 PostgreSQL/Redis 컨테이너를 제거했다. 테스트가 일반 DB 이름을 거절하는 것도 실제 실행으로 확인했다. 로컬 데모 서비스는 계속 실행 중이다.
+
+## 2026-10-25 추가 검증
+
+- 단지 A 계정으로 단지 B의 민원·공지·댓글·투표·일정을 읽거나 변경하는 요청을 차단했다. 관리자 A가 주민 B의 가입 상태를 바꾸거나, 단지 B의 미가입 주민 기록을 단지 A에 자동 연결하거나, 단지 B의 대기 사용자를 단지 A 주민으로 등록하는 경로도 수정했다.
+- 인증된 업로드는 현재 활성·승인·소속 단지를 다시 확인한다. 로컬 디스크 저장은 JPG/PNG/WEBP와 경로 형식을 제한한다.
+- 전용 PostgreSQL 16 테스트 DB에서 전체 Jest 20개 스위트, **260개 테스트 통과**. 기본 로컬 데모 DB에서는 테스트를 실행하지 않았다.
+- 로컬 단일 서버 Compose의 26개 마이그레이션, PostgreSQL/Redis/Express/Next/Caddy 건강 상태, `https://localhost`의 화면·API·이미지 제공, 익명 업로드 401을 확인했다. localhost 인증서는 로컬용이며 공인 HTTPS 발급 검증은 아니다.
+- `scripts/portfolio-backup.sh`로 DB·이미지 볼륨을 묶고, SQL을 별도 임시 DB에 복원해 26개 마이그레이션 기록을 확인했다. 실제 장애 복구와 서버 외부 백업 보관은 아직 검증하지 않았다.
+- AWS 무료 플랜에서 Lightsail 및 서울 리전 EC2가 거부되고 시드니 EC2가 허용됨을 계정 화면에서 확인했다. 최종 후보는 t4g.small ARM64 2GiB이며 실제 EC2 자원은 아직 생성하지 않았다.
+- 이전 EC2/ECR 자동 배포 워크플로는 수동 실행만 가능하도록 변경했다. 배포 이미지의 ARM64 빌드와 원격 CI 결과는 별도 확인한다.
+
+## 2026-10-27 의존성 보안 업데이트와 재검증
+
+- `npm audit fix`로 잠금 파일의 호환 버전 의존성을 업데이트했다. `proxy-addr` critical, `multer` high 등 서버 의존성 경고를 해결했고 `npm audit --omit=dev`는 **0건**이다. 전체 `npm audit`에는 Windows 개발 서버와 관련된 `esbuild` low 1건이 남는다.
+- 변경 후 백엔드 `npm run typecheck`와 전용 PostgreSQL 16 DB의 `npm run test:ci`에서 **20개 묶음, 260개 통과**를 다시 확인했다. 잠금 파일 변경 후 ARM64 Docker 이미지 3개를 재빌드하고, backend 파일 읽기 및 migrator의 26개 마이그레이션 조회를 확인했다.
+- Docker Desktop의 오래된 소켓 오류로 엔진이 시작하지 않았으나, 데이터 디스크와 별개인 런타임 폴더를 격리하고 다시 시작해 Engine 29.3.1/Ubuntu WSL 연결을 확인했다. 상세한 복구 기록은 `docs/deployment-portfolio.md`에 있다.

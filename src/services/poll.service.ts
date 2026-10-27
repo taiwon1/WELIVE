@@ -16,9 +16,11 @@ import type {
 } from "../types/poll.types";
 
 // 투표 목록 조회
-export const getPolls = async (query: PollListQuery): Promise<PollListResponse> => {
+export const getPolls = async (query: PollListQuery, apartmentId?: string): Promise<PollListResponse> => {
   const { page, limit } = parsePagination(query.page, query.limit, 11);
-  const { polls, totalCount } = await pollRepository.findPolls({ ...query, page, limit });
+  const { polls, totalCount } = apartmentId
+    ? await pollRepository.findPolls({ ...query, page, limit }, apartmentId)
+    : await pollRepository.findPolls({ ...query, page, limit });
 
   return {
     polls: polls.map((poll) => ({

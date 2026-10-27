@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import * as pollService from "../services/poll.service";
+import { requireBoardInApartment, requirePollInApartment } from "../services/tenant-access.service";
 import { create } from "superstruct";
 import { CreatePollStruct, UpdatePollStruct, validatePollListQuery } from "../structs/poll.struct";
 import { BadRequestError } from "../errors/errors";
@@ -8,7 +9,7 @@ import type { CreatePollDto, UpdatePollDto } from "../types/poll.types";
 export const getPolls = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const query = validatePollListQuery(req.query);
-    const result = await pollService.getPolls(query);
+    const result = await pollService.getPolls(query, req.user.apartmentId!);
     res.status(200).json(result);
   } catch (err) {
     next(err);
@@ -19,6 +20,7 @@ export const getPollById = async (req: Request, res: Response, next: NextFunctio
   try {
     const id = req.params["pollId"] as string;
     if (!id) throw new BadRequestError("pollId가 필요합니다.");
+    await requirePollInApartment(id, req.user.apartmentId!);
     const result = await pollService.getPollById(id);
     res.status(200).json(result);
   } catch (err) {
@@ -39,6 +41,7 @@ export const createPoll = async (req: Request, res: Response, next: NextFunction
       options: raw.options,
       ...(raw.status !== undefined ? { status: raw.status } : {}),
     };
+    await requireBoardInApartment(dto.boardId, req.user.apartmentId!, 'POLL');
     const result = await pollService.createPoll(dto, req.user.id);
     res.status(201).json(result);
   } catch (err) {
@@ -60,6 +63,7 @@ export const updatePoll = async (req: Request, res: Response, next: NextFunction
       ...(raw.status !== undefined ? { status: raw.status } : {}),
       ...(raw.options !== undefined ? { options: raw.options } : {}),
     };
+    await requirePollInApartment(id, req.user.apartmentId!);
     const result = await pollService.updatePoll(id, dto);
     res.status(200).json(result);
   } catch (err) {
@@ -71,6 +75,7 @@ export const deletePoll = async (req: Request, res: Response, next: NextFunction
   try {
     const id = req.params["pollId"] as string;
     if (!id) throw new BadRequestError("pollId가 필요합니다.");
+    await requirePollInApartment(id, req.user.apartmentId!);
     await pollService.deletePoll(id);
     res.status(200).json({ message: "정상적으로 삭제 처리되었습니다." });
   } catch (err) {

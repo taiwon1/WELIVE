@@ -4,6 +4,8 @@ import { randomUUID } from "crypto";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { s3 } from "../lib/s3";
 import { authMiddleware } from "../middlewares/auth.middleware";
+import { tenantMiddleware } from "../middlewares/tenant.middleware";
+import { writeLocalAsset } from "../services/local-assets.service";
 
 const router = Router();
 
@@ -19,12 +21,9 @@ const EXTENSION_BY_MIME_TYPE: Record<string, string> = {
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
-if (!bucket) {
-  throw new Error("S3_BUCKET is not set");
-}
-
-if (!region) {
-  throw new Error("AWS_REGION is not set");
+if (process.env.UPLOAD_STORAGE !== 'local') {
+  if (!bucket) throw new Error("S3_BUCKET is not set");
+  if (!region) throw new Error("AWS_REGION is not set");
 }
 
 const storage = multer.memoryStorage();
@@ -43,7 +42,7 @@ const upload = multer({
   },
 });
 
-router.post("/upload", authMiddleware, upload.single("image"), async (req, res) => {
+router.post("/upload", authMiddleware, tenantMiddleware, upload.single("image"), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -54,29 +53,36 @@ router.post("/upload", authMiddleware, upload.single("image"), async (req, res) 
     const ext = EXTENSION_BY_MIME_TYPE[req.file.mimetype] || ".bin";
     const key = `uploads/${Date.now()}-${randomUUID()}${ext}`;
 
-    await s3.send(
-      new PutObjectCommand({
-        Bucket: bucket,
-        Key: key,
-        Body: req.file.buffer,
-        ContentType: req.file.mimetype,
-      }),
-    );
-
-    const assetBaseUrl = process.env.ASSET_BASE_URL?.replace(/\/$/, "");
-    const objectUrl = assetBaseUrl
-      ? `${assetBaseUrl}/${key}`
-      : `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+    let objectUrl: string;
+    let storedKey = key;
+    if (process.env.UPLOAD_STORAGE === 'local') {
+      const asset = await writeLocalAsset(req.file, 'uploads', ext);
+      storedKey = asset.key;
+      objectUrl = asset.url;
+    } else {
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: bucket,
+          Key: key,
+          Body: req.file.buffer,
+          ContentType: req.file.mimetype,
+        }),
+      );
+      const assetBaseUrl = process.env.ASSET_BASE_URL?.replace(/\/$/, "");
+      objectUrl = assetBaseUrl
+        ? `${assetBaseUrl}/${key}`
+        : `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+    }
 
     return res.status(201).json({
       message: "upload success",
-      key,
+      key: storedKey,
       url: objectUrl,
       contentType: req.file.mimetype,
       size: req.file.size,
     });
   } catch (error) {
-    console.error("S3 upload error:", error);
+    console.error("이미지 업로드 오류:", error);
 
     if (error instanceof multer.MulterError) {
       if (error.code === "LIMIT_FILE_SIZE") {

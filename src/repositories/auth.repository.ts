@@ -271,6 +271,7 @@ export class AuthRepo {
       where: {
         OR: [{ id: residentId }, { residentId: residentId }],
       },
+      include: { resident: { select: { apartmentId: true } } },
     });
   };
 

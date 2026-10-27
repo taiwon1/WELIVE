@@ -10,7 +10,8 @@ import {
   NoticeDetail,
   NoticeListItem,
 } from "../types/notice.types";
-import { NotFoundError } from "../errors/errors";
+import { NotFoundError, ForbiddenError } from "../errors/errors";
+import { getTenantActor, requireBoardInApartment } from "./tenant-access.service";
 
 // 응답 포맷 - 목록
 const formatNoticeListItem = (notice: any): NoticeListItem => ({
@@ -57,7 +58,10 @@ const formatNoticeDetail = (notice: any): NoticeDetail => ({
 export const getNotices = async (
   apartmentId: string,
   query: NoticeListQuery,
+  requestUserId: string,
 ): Promise<NoticeListResponse> => {
+  const actor = await getTenantActor(requestUserId);
+  if (actor.apartmentId !== apartmentId) throw new ForbiddenError('소속 단지를 확인해주세요.');
   const { notices, totalCount } = await noticeRepository.findNotices(apartmentId, query);
   return {
     notices: notices.map(formatNoticeListItem),
@@ -66,9 +70,10 @@ export const getNotices = async (
 };
 
 // 공지사항 상세 조회
-export const getNoticeById = async (noticeId: string): Promise<NoticeDetail> => {
+export const getNoticeById = async (noticeId: string, requestUserId: string): Promise<NoticeDetail> => {
+  const actor = await getTenantActor(requestUserId);
   const notice = await noticeRepository.findNoticeById(noticeId);
-  if (!notice) throw new NotFoundError("공지사항을 찾을 수 없습니다.");
+  if (!notice || notice.board.apartmentId !== actor.apartmentId) throw new NotFoundError("공지사항을 찾을 수 없습니다.");
 
   await noticeRepository.incrementViewsCount(noticeId);
 
@@ -77,6 +82,9 @@ export const getNoticeById = async (noticeId: string): Promise<NoticeDetail> => 
 
 // 공지사항 등록
 export const createNotice = async (authorId: string, body: CreateNoticeBody) => {
+  const actor = await getTenantActor(authorId);
+  if (!actor.isAdmin) throw new ForbiddenError('관리자만 공지를 등록할 수 있습니다.');
+  await requireBoardInApartment(body.boardId, actor.apartmentId, 'NOTICE');
   const notice = await noticeRepository.createNotice(authorId, body);
 
   const apartmentId = (notice as any).board?.apartmentId;
@@ -125,18 +133,23 @@ export const createNotice = async (authorId: string, body: CreateNoticeBody) => 
 };
 
 // 공지사항 수정
-export const updateNotice = async (noticeId: string, body: UpdateNoticeBody) => {
+export const updateNotice = async (noticeId: string, body: UpdateNoticeBody, requestUserId: string) => {
+  const actor = await getTenantActor(requestUserId);
+  if (!actor.isAdmin) throw new ForbiddenError('관리자만 공지를 수정할 수 있습니다.');
   const notice = await noticeRepository.findNoticeById(noticeId);
-  if (!notice) throw new NotFoundError("공지사항을 찾을 수 없습니다.");
+  if (!notice || notice.board.apartmentId !== actor.apartmentId) throw new NotFoundError("공지사항을 찾을 수 없습니다.");
+  if (body.boardId) await requireBoardInApartment(body.boardId, actor.apartmentId, 'NOTICE');
 
   const updated = await noticeRepository.updateNotice(noticeId, body);
   return formatNoticeListItem(updated);
 };
 
 // 공지사항 삭제
-export const deleteNotice = async (noticeId: string) => {
+export const deleteNotice = async (noticeId: string, requestUserId: string) => {
+  const actor = await getTenantActor(requestUserId);
+  if (!actor.isAdmin) throw new ForbiddenError('관리자만 공지를 삭제할 수 있습니다.');
   const notice = await noticeRepository.findNoticeById(noticeId);
-  if (!notice) throw new NotFoundError("공지사항을 찾을 수 없습니다.");
+  if (!notice || notice.board.apartmentId !== actor.apartmentId) throw new NotFoundError("공지사항을 찾을 수 없습니다.");
 
   await noticeRepository.deleteNotice(noticeId);
   return { message: "정상적으로 삭제 처리되었습니다" };
