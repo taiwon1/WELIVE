@@ -1,251 +1,107 @@
-# 🏠 WeLive — 아파트 주민·관리 통합 플랫폼
+# 🏠 WELIVE — 아파트 주민·관리 플랫폼
 
-아파트 주민과 관리자가 하나의 플랫폼에서 소통하고 관리할 수 있는 통합 서비스입니다.
+주민의 민원·공지·투표와 관리자의 처리 업무를 연결하는 서비스입니다. 2025년 부트캠프 팀 프로젝트를 바탕으로 박태원이 공동 문제 처리 흐름, 프런트 연동, 공개 배포를 개인 포트폴리오로 확장했습니다.
 
-> **프로젝트 기간:** 2025.03.26 ~ 2025.05.11
+> 팀 프로젝트: 2025.03.26 ~ 2025.05.11
+>
+> 개인 확장: 공동 문제·알림 중복 방지·관리자 업무 화면·AWS 공개 배포
 
-<br/>
+## 링크
 
-## 🔗 링크
+| 구분 | 주소 |
+| --- | --- |
+| 공개 데모 | [WELIVE 열기](https://3-107-54-69.sslip.io/) |
+| 개인 확장 코드 | [taiwon1/WELIVE](https://github.com/taiwon1/WELIVE) |
+| 원래 팀 저장소 | [nb07-welive-team4/nb07-welive-team4](https://github.com/nb07-welive-team4/nb07-welive-team4) |
+| 팀 기획 문서 | [프로젝트 계획서·개발 리포트](https://www.notion.so/WELIVE-35d9eb10fd748095a335e517076bf414) |
 
-| 구분 | 링크 |
-|------|------|
-| 서비스 | [(https://www.nb07weliveteam4.cloud](https://www.nb07weliveteam4.cloud) |
-| API Swagger | [nb-project-welive-be.vercel.app/api](https://nb-project-welive-be.vercel.app/api) |
-| 프로젝트 문서 (Notion) | [프로젝트 계획서 & 개발 리포트](https://www.notion.so/WELIVE-35d9eb10fd748095a335e517076bf414) |
-| 팀 안내 문서 | [위리브 안내](https://codeit.notion.site/1f46fd228e8d80cdbc7af27b082d118d) |
+데모에는 가상 계정과 데이터만 사용합니다. 현재 URL은 자동 할당된 EC2 공인 IP에 연결한 `sslip.io` 주소이므로 **서버를 중지하고 다시 시작하면 바뀔 수 있습니다.** 마지막 공개 접속 확인은 2026-10-28입니다. 접속이 안 되면 [배포 기록](docs/deployment-portfolio.md)과 서버 상태를 확인해야 합니다.
 
-<br/>
+## 해결하려는 문제
 
-## 👥 팀 구성
+같은 승강기 고장을 여러 주민이 따로 신고하면 관리자는 같은 처리 내용을 반복해서 알리고, 주민은 자신의 민원이 실제로 처리 중인지 확인하기 어렵습니다. 관리자가 같은 원인의 민원을 **공동 문제**로 수동 연결해 한 번의 처리 업데이트를 각 작성자에게 전달하도록 했습니다. 다른 주민의 비공개 민원 내용은 공유하지 않습니다.
 
-| 이름 | 역할 |
-|------|------|
-| 박태원 | 팀장 · 민원 · 공지사항 · 댓글 · 이벤트 관리 |
-| 서석규 | 아파트 · 투표 · 투표 스케줄 |
-| 이경민 | 서기 · 인증 · 사용자 · 입주민 관리 |
-| 이창호 | 알림 · 배포 |
-
-<br/>
-
-## 🛠 기술 스택
-
-### Backend
-- **Runtime:** Node.js 20
-- **Framework:** Express v5
-- **Language:** TypeScript 5.5
-
-### Database
-- **DB:** PostgreSQL 16
-- **ORM:** Prisma v7
-- **Cache / Queue:** Redis 7 · BullMQ
-
-### Infra
-- **Server:** AWS EC2
-- **Storage:** AWS S3
-- **Container:** Docker · Docker Compose
-- **CI/CD:** GitHub Actions
-- **AI 자동화:** Claude API (PR 리뷰 · 보안 체크 · 배포 알림)
-
-### Testing
-- **Framework:** Jest · Supertest
-- **방식:** 통합 테스트 (mock 없이 실제 DB + HTTP 요청 기반) · 총 210개
-
-<br/>
-
-## ✨ 주요 기능
-
-| 기능 | 설명 |
-|------|------|
-| 공지사항 | 관리자가 공지 등록 시 입주민 실시간 알림 전송, 일정 자동 등록 |
-| 민원 | 공개·비공개 설정, 상태 관리(접수전→처리중→처리완료), 상태 변경 시 알림 |
-| 댓글 | 공지사항·민원에 댓글 등록·수정·삭제, 권한 기반 접근 제어 |
-| 이벤트 | 아파트 캘린더 일정 관리, 공지사항 등록 시 자동 생성 |
-| 투표 | 입주민 투표 생성·참여·마감 자동화 |
-| 실시간 알림 | SSE + Bull Queue + Outbox 패턴 기반 안정적 알림 전송 |
-| 배포 자동화 | Claude AI 보안 체크 → Docker 빌드 → EC2 배포 → 에러 분석 → Slack 알림 |
-
-<br/>
-
-## 🏗 시스템 아키텍처
-
-```
-Client (Next.js)
-      │ HTTPS
-      ▼
-API Server (Express v5 · Node.js · TypeScript · AWS EC2)
-      │
-      ├── PostgreSQL (Prisma ORM · AWS RDS)
-      ├── Redis (Bull Queue · Pub/Sub)
-      └── AWS S3 (파일 업로드)
-            │
-            ▼
-      Notification System (SSE · Queue · Outbox 패턴)
-            │
-            ▼ 실시간 알림
-      Client
-
-CI/CD (GitHub Actions)
-  보안 체크 → Docker 빌드 → ECR push → EC2 배포 → 로그 분석 → Slack 알림
+```text
+주민 A·B가 각각 민원 등록
+       ↓
+관리자가 원문 확인 후 공동 문제로 연결
+       ↓
+처리 이력·상태 저장 → 연결 민원 상태 동기화 → 작성자별 알림
+       ↓
+처리 완료 후 관리자가 공지 초안을 검토·발행
 ```
 
-<br/>
+AI가 자동으로 민원을 합치지는 않습니다. 관리자의 제목 작성을 돕기 위해 선택한 민원 제목의 단어 빈도로 **수정 가능한 제목**을 제안합니다. 같은 장소라도 원인이 다를 수 있어 연결 결정은 관리자에게 남겼습니다.
 
-## 📁 프로젝트 구조
+## 주요 기능과 설계
 
-```
-nb07-welive-team4/
-├── .github/
-│   └── workflows/
-│       ├── ci.yaml                 # PR 테스트 자동화
-│       ├── deploy.yaml             # main 브랜치 EC2 자동 배포
-│       └── claude-review.yml       # Claude AI PR 코드 리뷰
-│
-├── prisma/
-│   ├── schema.prisma               # DB 스키마 정의
-│   └── migrations/                 # 마이그레이션 히스토리
-│
-├── src/
-│   ├── app.ts                      # Express 앱 설정
-│   ├── server.ts                   # 서버 진입점
-│   │
-│   ├── controllers/                # 요청/응답 처리
-│   ├── services/                   # 비즈니스 로직
-│   ├── repositories/               # DB 쿼리
-│   ├── routes/                     # API 엔드포인트 등록
-│   ├── middlewares/                # 인증, 에러 처리 등 공통 로직
-│   ├── structs/                    # 입력값 유효성 검사 (superstruct)
-│   ├── types/                      # TypeScript 타입 정의
-│   ├── lib/                        # 외부 서비스 연결 (DB, Redis, S3)
-│   ├── queue/                      # 알림 큐 설정
-│   ├── workers/                    # 백그라운드 알림 워커
-│   ├── utils/                      # 유틸리티 함수
-│   └── docs/                       # Swagger 문서
-│
-├── tests/                          # 통합 테스트 (210개)
-│   ├── setup.ts                    # 테스트 환경 설정
-│   ├── test-utils.ts               # 공통 유틸
-│   ├── auth.test.ts
-│   ├── comment.test.ts
-│   ├── complaint.test.ts
-│   ├── event.test.ts
-│   ├── notice.test.ts
-│   ├── poll.test.ts
-│   ├── resident.test.ts
-│   ├── user.test.ts
-│   └── ...
-│
-├── .env                            # 환경변수 (git 제외)
-├── .env.example                    # 환경변수 예시
-├── .dockerignore
-├── .gitignore
-├── compose.yaml                    # Docker Compose 설정
-├── deploy.sh                       # EC2 배포 스크립트
-├── Dockerfile                      # 프로덕션 Docker 이미지
-├── jest.config.cjs                 # Jest 설정
-├── package.json
-├── prisma.config.ts                # Prisma 설정
-├── tsconfig.json                   # TypeScript 기본 설정
-├── tsconfig.build.json             # 빌드용 TypeScript 설정
-├── tsconfig.test.json              # 테스트용 TypeScript 설정
-└── tsup.config.ts                  # 번들러 설정
+| 영역 | 구현 내용 |
+| --- | --- |
+| 주민 | 공개·비공개 민원, 본인 민원과 연결된 공동 문제 처리 이력, 공지·투표·알림 조회 |
+| 관리자 | 미확인·미처리 민원 구분, 공동 문제 연결·해제, 처리 상태·예정일 기록, 완료 공지 초안 |
+| 상태 정합성 | 공동 문제의 처리 중·완료·재개 상태를 연결 민원에도 같은 DB 트랜잭션으로 반영. 연결 중 개별 민원 상태 변경은 거절 |
+| 알림 중복 방지 | 민원 작성자를 사용자 기준으로 모아 업데이트당 한 명에게 알림 한 건 저장. `(userId, dedupeKey)` DB 제약 적용 |
+| 재시도·동시성 | `requestId`로 동일 요청의 처리 이력 중복을 방지하고 `expectedVersion` 충돌 시 409 반환 |
+| 정보 보호 | 주민은 자신의 연결 민원만 조회. 다른 주민의 민원 ID·제목·본문은 응답에서 제외 |
+| 공지 발행 | 완료 후 공지 작성 여부를 묻고 초안을 제공. 관리자가 최종 등록할 때만 단지 전체에 게시 |
+
+업무 상태·처리 이력·알림·Outbox를 함께 커밋하고, Outbox 워커가 이후 전달합니다. 이는 **알림 레코드의 중복 방지**이며 네트워크 전송이 정확히 한 번만 일어남을 보장하지는 않습니다. 상세 정책은 [공동 문제 설계](docs/incidents.md), 화면에서 발견한 문제와 수정 결과는 [업무 흐름 검증 기록](docs/incident-workflow-qa.md)에 있습니다.
+
+## 팀 프로젝트와 개인 확장
+
+| 구분 | 담당·범위 |
+| --- | --- |
+| 팀 프로젝트 | 박태원: 팀장·민원·공지사항·댓글·이벤트 관리. 서석규: 아파트·투표. 이경민: 인증·사용자·입주민. 이창호: 알림·배포 |
+| 개인 확장 | 공동 문제 모델·API, 상태·알림 정합성, 관리자 확인 표시와 제목 제안, Next.js 프런트 연동, 포트폴리오용 Docker Compose·EC2 공개 배포와 검증 |
+
+제공받은 Next.js 프런트 코드를 `frontend/`에 반입하고 백엔드와 같은 HTTPS 출처의 `/api`로 연결했습니다.
+
+## 기술과 배포 구조
+
+- **프런트:** Next.js 16, React 19, TypeScript
+- **API:** Node.js, Express 5, TypeScript, Prisma 7
+- **데이터·알림:** PostgreSQL 16, Redis 7, BullMQ, SSE, Outbox
+- **현재 배포:** AWS 시드니 EC2 Ubuntu 24.04 ARM64 `t4g.small` 한 대, Docker Compose, Caddy HTTPS
+- **파일:** 현재 데모 배포는 EC2 Docker 볼륨 사용. S3 연동 코드는 있지만 이 배포에서는 사용하지 않음
+- **CI:** GitHub Actions에서 마이그레이션·테스트·빌드 검사. 공개 서버 이미지는 로컬에서 ARM64로 빌드해 전달했으며 `main` 병합만으로 자동 배포되지는 않음
+
+```text
+브라우저 ─ HTTPS ─ Caddy ─┬─ /       → Next.js
+                         ├─ /api/* → Express ─ PostgreSQL
+                         │                    └ Redis·Outbox 워커 → SSE
+                         └─ /assets/* → 업로드 볼륨
 ```
 
-<br/>
+프런트·API·DB·Redis가 한 인스턴스에 있으므로 서버가 중단되면 전체 서비스가 중단됩니다. 이 구성은 비용을 낮춘 포트폴리오 배포입니다. 구축과 백업·복원 절차는 [배포 기록](docs/deployment-portfolio.md)을 참고하세요.
 
-## 🚀 로컬 실행 방법
+## 검증 결과
 
-프론트와 백엔드를 함께 실행하고 AWS에 배포하는 최신 절차는 [`docs/deployment.md`](docs/deployment.md)를 참고하세요.
+- 분리된 PostgreSQL 16 테스트 DB에서 **20개 테스트 묶음·260개 테스트** 통과. 민원·공동 문제·제목 제안 관련 54개가 포함됩니다.
+- 공개 HTTPS API에서 가상 주민 2명의 비공개 민원 연결 → 처리 중·완료 → 민원 상태 동기화 → 관리자 공지 발행을 확인했습니다.
+- 동일 업데이트 재시도에서 처리 이력이 중복 생성되지 않았고, 다른 주민의 비공개 민원 접근은 403이었습니다. 해당 시나리오에서 공동 문제 알림 4건과 처리 완료 Outbox 8건을 확인했습니다.
+- 관리자·주민 브라우저에서 로그인과 민원·공동 문제·완료 공지 화면을 확인했습니다. DB 백업을 별도 DB에 복원해 마이그레이션 26개·사용자 4명·공동 문제 1건을 확인했습니다.
 
-### 사전 준비
-- Node.js 20+
-- Docker
-- PostgreSQL 16
-- Redis 7
+위 수치는 테스트·데모 환경의 결과입니다. 실제 입주민의 재문의 감소나 관리자의 업무 시간 단축을 측정한 값은 아닙니다. 장시간 SSE 재연결과 실제 고령 사용자 대상 사용성 조사는 아직 검증하지 않았습니다.
 
-### 설치 및 실행
+## 로컬 실행
+
+Docker Desktop과 WSL 통합이 켜진 환경에서 실행합니다. `compose.local.yaml`은 PostgreSQL·Redis·프런트·API·프록시를 함께 실행합니다.
 
 ```bash
-# 1. 레포지토리 클론
-git clone https://github.com/nb07-welive-team4/nb07-welive-team4.git
-cd nb07-welive-team4
-
-# 2. 패키지 설치
-npm ci
-cd frontend && npm ci && cd ..
-
-# 3. 환경변수 설정
-cp .env.example .env
-# .env 파일에 아래 환경변수 값 입력
-
-# 4. 기존 DB 마이그레이션 적용
-npx prisma migrate deploy
-npx prisma generate
-
-# 5. 개발 서버 실행
-npm run dev
-```
-
-### Docker로 전체 서비스 실행
-
-```bash
+git clone https://github.com/taiwon1/WELIVE.git
+cd WELIVE
 docker compose -f compose.local.yaml build
 docker compose -f compose.local.yaml --profile tools run --rm migration
 docker compose -f compose.local.yaml up -d
 ```
 
-<br/>
+화면: `http://localhost:3000` · API 확인: `http://localhost:3000/api/ping`.
 
-## ⚙️ 환경변수
+전체 테스트는 **테스트 전용 DB**를 준비한 뒤 `npm run test:ci`로 실행합니다. 일부 테스트는 테이블 데이터를 삭제하므로 운영 DB를 대상으로 실행하지 마세요. 배포와 환경 설정은 [배포 기록](docs/deployment-portfolio.md)을 참고하세요.
 
-`.env.example`을 복사해 `.env`를 작성해주세요.
+## 남은 과제
 
-```env
-# ── 서버 ──────────────────────────────
-NODE_ENV=development
-PORT=4000
-CORS_ORIGIN=http://localhost:3000
-
-# ── 데이터베이스 ───────────────────────
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/welive
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=welive
-DB_USER=postgres
-DB_PASSWORD=postgres
-DB_SSL=false
-
-# ── JWT ───────────────────────────────
-JWT_SECRET=your_jwt_secret
-JWT_ACCESS_SECRET=your_access_secret
-JWT_REFRESH_SECRET=your_refresh_secret
-
-# ── Redis ─────────────────────────────
-REDIS_URL=redis://localhost:6379
-
-# ── AWS S3 ────────────────────────────
-AWS_REGION=ap-northeast-2
-S3_BUCKET=your_s3_bucket_name
-AWS_ACCESS_KEY_ID=your_access_key
-AWS_SECRET_ACCESS_KEY=your_secret_key
-
-# ── Slack (배포 알림) ─────────────────
-SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
-```
-
-<br/>
-
-## 🧪 테스트
-
-```bash
-# 전체 테스트 실행
-npm test
-
-# 특정 도메인만 실행
-npm test -- --testPathPattern="comment|complaint|event|notice"
-
-# CI 환경
-npm run test:ci
-```
-
-> 통합 테스트 총 **210개** — mock 없이 실제 DB + HTTP 요청으로 전체 플로우 검증
+- AI 기반 유사 민원 추천은 아직 없습니다. 현재 제목 제안은 단어 빈도 규칙입니다.
+- 공동 문제와 공지 사이의 영구적인 DB 관계·발행 이력 추적은 아직 없습니다.
+- 알림 전송 재시도와 장시간 SSE 재연결은 운영 조건에서 추가 검증이 필요합니다.
+- DB·업로드 데이터는 단일 서버에 의존합니다. 서버 밖 백업과 복원 확인을 계속해야 합니다.
